@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="15 32 320 80" role="img" aria-label="sportify.ph" preserveAspectRatio="xMinYMid meet">
+  <title>sportify.ph</title>
+  <desc>Sportify Philippines logo: chocolate brown wordmark with orange court mark.</desc>
+  <g transform="translate(20 40)">
+    <rect x="0" y="0" width="60" height="40" fill="#F37021"/>
+    <line x1="0" y1="20" x2="60" y2="20" stroke="#FAF5EC" stroke-width="1.5"/>
+    <line x1="30" y1="0" x2="30" y2="40" stroke="#FAF5EC" stroke-width="0.6" stroke-dasharray="2,2"/>
+    <rect x="12" y="8" width="36" height="24" fill="none" stroke="#FAF5EC" stroke-width="0.6"/>
+  </g>
+  <text x="95" y="73" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700" fill="#3E2817" letter-spacing="-1">sportify</text>
+  <text x="95" y="100" font-family="Georgia, 'Times New Roman', serif" font-size="20" font-style="italic" fill="#F37021" letter-spacing="1">.ph</text>
+</svg>

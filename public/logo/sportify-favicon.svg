@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="sportify.ph">
+  <title>sportify.ph</title>
+  <desc>Sportify Philippines favicon: orange court mark on chocolate.</desc>
+  <rect x="0" y="0" width="64" height="64" rx="10" fill="#3E2817"/>
+  <rect x="6" y="14" width="52" height="36" fill="#F37021"/>
+  <line x1="6" y1="32" x2="58" y2="32" stroke="#FAF5EC" stroke-width="3" stroke-linecap="round"/>
+  <line x1="32" y1="14" x2="32" y2="50" stroke="#FAF5EC" stroke-width="1.6" stroke-dasharray="3,3"/>
+</svg>
