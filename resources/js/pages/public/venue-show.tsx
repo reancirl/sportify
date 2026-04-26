@@ -4,12 +4,13 @@ import {
     Calendar,
     CheckCircle2,
     Clock,
-    Lock,
     Mail,
     MapPin,
     Phone,
     Users,
+    X,
 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -56,6 +57,8 @@ type Props = {
     schedule: ScheduleEntry[];
     selectedDate: string;
     dateOptions: DateOption[];
+    earliestDate: string;
+    latestDate: string;
 };
 
 const DAY_LABELS = [
@@ -74,6 +77,8 @@ export default function PublicVenueShow({
     schedule,
     selectedDate,
     dateOptions,
+    earliestDate,
+    latestDate,
 }: Props) {
     const { auth } = usePage().props;
     const user = (auth as { user: User | null }).user;
@@ -86,17 +91,20 @@ export default function PublicVenueShow({
                   `/bookings/create?venue=${venue.id}&court=${courtId}`,
               )}`;
 
-    const slotHref = (courtId: string, startsAt: string) => {
-        const next = `/bookings/create?venue=${venue.id}&court=${courtId}&starts_at=${encodeURIComponent(
+    const buildBookingHref = (
+        courtId: string,
+        startsAt: string,
+        slotCount: number,
+    ) =>
+        `/checkout?venue=${venue.id}&court=${courtId}&starts_at=${encodeURIComponent(
             startsAt,
-        )}`;
-
-        return user
-            ? next
-            : `${login().url}?next=${encodeURIComponent(next)}`;
-    };
+        )}&slot_count=${slotCount}`;
 
     const switchDate = (date: string) => {
+        if (!date || date < earliestDate || date > latestDate) {
+            return;
+        }
+
         router.get(
             `/venues/${venue.slug}`,
             { date },
@@ -195,73 +203,17 @@ export default function PublicVenueShow({
                             </section>
                         )}
 
-                        {/* Courts */}
-                        <section
-                            data-reveal
-                            className="border border-[#3e2817]/15 bg-white"
-                        >
-                            <div className="border-b border-[#3e2817]/12 px-7 py-5">
-                                <p className="editorial-label">The Courts</p>
-                            </div>
-                            <div className="px-7 py-2">
-                                {!venue.courts || venue.courts.length === 0 ? (
-                                    <p className="py-6 font-serif text-sm text-[#5c3a21]">
-                                        No courts published yet.
-                                    </p>
-                                ) : (
-                                    <ul className="divide-y divide-[#3e2817]/12">
-                                        {venue.courts.map((court) => (
-                                            <li
-                                                key={court.id}
-                                                className="flex items-start justify-between gap-4 py-5"
-                                            >
-                                                <div className="space-y-1.5">
-                                                    <p className="font-display text-lg font-bold tracking-[-0.01em] text-[#3e2817]">
-                                                        {court.name}
-                                                    </p>
-                                                    {court.description && (
-                                                        <p className="font-serif text-sm text-[#5c3a21]">
-                                                            {court.description}
-                                                        </p>
-                                                    )}
-                                                    <p className="text-[10px] uppercase tracking-[0.22em] text-[#5c3a21]">
-                                                        {court.slot_minutes}-min slots
-                                                    </p>
-                                                </div>
-                                                <div className="flex flex-col items-end gap-3">
-                                                    <span className="font-display text-base font-semibold text-[#3e2817]">
-                                                        {formatPHP(court.hourly_rate)}
-                                                        <span className="text-[10px] tracking-[0.18em] text-[#5c3a21]">
-                                                            {' '}
-                                                            / HR
-                                                        </span>
-                                                    </span>
-                                                    <Link
-                                                        href={bookHref(court.id)}
-                                                        className="inline-flex items-center gap-1.5 border border-[#3e2817] px-4 py-2 text-[10px] font-medium uppercase tracking-[0.22em] text-[#3e2817] transition hover:bg-[#3e2817] hover:text-[#faf5ec]"
-                                                    >
-                                                        Book
-                                                        <ArrowRight
-                                                            className="size-3"
-                                                            aria-hidden
-                                                        />
-                                                    </Link>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                        </section>
-
                         {/* Schedule */}
                         <ScheduleSection
+                            key={selectedDate}
                             schedule={schedule}
                             selectedDate={selectedDate}
                             dateOptions={dateOptions}
+                            earliestDate={earliestDate}
+                            latestDate={latestDate}
+                            advanceWeeks={venue.advance_booking_weeks}
                             onSwitchDate={switchDate}
-                            slotHref={slotHref}
-                            isMember={!!user}
+                            buildBookingHref={buildBookingHref}
                         />
 
                         {/* Open play */}
@@ -461,45 +413,116 @@ type ScheduleSectionProps = {
     schedule: ScheduleEntry[];
     selectedDate: string;
     dateOptions: DateOption[];
+    earliestDate: string;
+    latestDate: string;
+    advanceWeeks: number;
     onSwitchDate: (date: string) => void;
-    slotHref: (courtId: string, startsAt: string) => string;
-    isMember: boolean;
+    buildBookingHref: (
+        courtId: string,
+        startsAt: string,
+        slotCount: number,
+    ) => string;
 };
+
+const MAX_SLOT_COUNT = 8;
 
 function ScheduleSection({
     schedule,
     selectedDate,
     dateOptions,
+    earliestDate,
+    latestDate,
+    advanceWeeks,
     onSwitchDate,
-    slotHref,
-    isMember,
+    buildBookingHref,
 }: ScheduleSectionProps) {
     const venueClosed = schedule.every((entry) => entry.slots.length === 0);
+    const isCustomDate = !dateOptions.some((d) => d.date === selectedDate);
+    const customDateLabel = formatPickedDate(selectedDate);
+
+    // Multi-select state: which court + which slot indices on it.
+    const [selection, setSelection] = useState<{
+        courtId: string;
+        indices: number[];
+    } | null>(null);
+
+    const selectedEntry = useMemo(
+        () =>
+            selection
+                ? (schedule.find((e) => e.court.id === selection.courtId) ?? null)
+                : null,
+        [selection, schedule],
+    );
+
+    const toggleSlot = (courtId: string, index: number, available: boolean) => {
+        if (!available) {
+            return;
+        }
+
+        setSelection((prev) => {
+            // Different court → start fresh.
+            if (!prev || prev.courtId !== courtId) {
+                return { courtId, indices: [index] };
+            }
+
+            // Same slot → deselect it.
+            if (prev.indices.includes(index)) {
+                const next = prev.indices.filter((i) => i !== index);
+
+                return next.length === 0 ? null : { courtId, indices: next };
+            }
+
+            // Cap reached.
+            if (prev.indices.length >= MAX_SLOT_COUNT) {
+                return prev;
+            }
+
+            const min = Math.min(...prev.indices);
+            const max = Math.max(...prev.indices);
+
+            // Must extend the existing contiguous run at either end.
+            if (index === min - 1 || index === max + 1) {
+                return {
+                    courtId,
+                    indices: [...prev.indices, index].sort((a, b) => a - b),
+                };
+            }
+
+            // Non-adjacent → replace selection with just the new slot.
+            return { courtId, indices: [index] };
+        });
+    };
+
+    const clearSelection = () => setSelection(null);
 
     return (
         <section
             data-reveal
             className="border border-[#3e2817]/15 bg-white"
         >
+            {selection && selectedEntry && (
+                <SelectionBar
+                    entry={selectedEntry}
+                    indices={selection.indices}
+                    onClear={clearSelection}
+                    buildBookingHref={buildBookingHref}
+                />
+            )}
+
             <div className="border-b border-[#3e2817]/12 px-7 py-5">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
                         <p className="editorial-label">The Schedule</p>
                         <p className="mt-1 font-serif text-sm text-[#5c3a21]">
-                            Browse open slots, then{' '}
-                            {isMember ? 'reserve' : 'sign in to reserve'}.
+                            Browse open slots, then reserve in seconds — no
+                            account needed.
                         </p>
                     </div>
-                    {!isMember && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#faf5ec] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-[#5c3a21] ring-1 ring-inset ring-[#3e2817]/15">
-                            <Lock className="size-3" aria-hidden />
-                            Members only
-                        </span>
-                    )}
                 </div>
 
-                {/* Day picker */}
-                <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+                {/* Day picker — quick tabs for the next ~week, plus a date input
+                    for jumping further out (up to advance_booking_weeks). */}
+                <div className="mt-5 flex flex-wrap items-stretch gap-2">
                     {dateOptions.map((option) => {
                         const active = option.date === selectedDate;
 
@@ -531,7 +554,49 @@ function ScheduleSection({
                             </button>
                         );
                     })}
+
+                    <label
+                        className={cn(
+                            'flex min-w-[160px] cursor-pointer flex-col items-start rounded-md border px-3 py-2 text-left transition',
+                            isCustomDate
+                                ? 'border-[#3e2817] bg-[#3e2817] text-[#faf5ec]'
+                                : 'border-dashed border-[#3e2817]/30 bg-white text-[#3e2817] hover:border-[#3e2817]/50',
+                        )}
+                    >
+                        <span
+                            className={cn(
+                                'flex items-center gap-1.5 text-[9px] uppercase tracking-[0.22em]',
+                                isCustomDate
+                                    ? 'text-[#faf5ec]/65'
+                                    : 'text-[#5c3a21]',
+                            )}
+                        >
+                            <Calendar className="size-3" aria-hidden />
+                            Pick a date
+                        </span>
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            min={earliestDate}
+                            max={latestDate}
+                            onChange={(e) => onSwitchDate(e.target.value)}
+                            className={cn(
+                                'mt-0.5 cursor-pointer bg-transparent font-display text-sm font-bold tracking-[-0.01em] outline-none',
+                                isCustomDate
+                                    ? 'text-[#faf5ec] [color-scheme:dark]'
+                                    : 'text-[#3e2817]',
+                            )}
+                        />
+                    </label>
                 </div>
+
+                <p className="mt-3 text-[10px] uppercase tracking-[0.22em] text-[#5c3a21]/65">
+                    Bookable up to {advanceWeeks}{' '}
+                    {advanceWeeks === 1 ? 'week' : 'weeks'} ahead
+                    {isCustomDate && customDateLabel
+                        ? ` · Showing ${customDateLabel}`
+                        : ''}
+                </p>
             </div>
 
             {schedule.length === 0 ? (
@@ -573,7 +638,7 @@ function ScheduleSection({
                                 </p>
                             ) : (
                                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
-                                    {entry.slots.map((slot) => {
+                                    {entry.slots.map((slot, idx) => {
                                         if (!slot.available) {
                                             return (
                                                 <span
@@ -586,17 +651,36 @@ function ScheduleSection({
                                             );
                                         }
 
+                                        const isSelected =
+                                            selection?.courtId === entry.court.id &&
+                                            selection.indices.includes(idx);
+                                        const otherCourtSelected =
+                                            selection !== null &&
+                                            selection.courtId !== entry.court.id;
+
                                         return (
-                                            <Link
+                                            <button
                                                 key={slot.starts_at}
-                                                href={slotHref(
-                                                    entry.court.id,
-                                                    slot.starts_at,
+                                                type="button"
+                                                aria-pressed={isSelected}
+                                                onClick={() =>
+                                                    toggleSlot(
+                                                        entry.court.id,
+                                                        idx,
+                                                        slot.available,
+                                                    )
+                                                }
+                                                className={cn(
+                                                    'inline-flex h-9 items-center justify-center rounded-md border text-[11px] font-medium tracking-[0.06em] transition',
+                                                    isSelected
+                                                        ? 'border-[#f37021] bg-[#f37021] text-white shadow-[0_4px_10px_-4px_rgba(243,112,33,0.5)]'
+                                                        : otherCourtSelected
+                                                          ? 'border-[#3e2817]/15 bg-white text-[#3e2817]/40 hover:border-[#3e2817]/35 hover:text-[#3e2817]'
+                                                          : 'border-[#3e2817]/20 bg-white text-[#3e2817] hover:border-[#f37021] hover:bg-[#f37021]/10',
                                                 )}
-                                                className="group inline-flex h-9 items-center justify-center rounded-md border border-[#3e2817]/20 bg-white text-[11px] font-medium tracking-[0.06em] text-[#3e2817] transition hover:border-[#f37021] hover:bg-[#f37021] hover:text-white"
                                             >
                                                 {slot.label}
-                                            </Link>
+                                            </button>
                                         );
                                     })}
                                 </div>
@@ -606,5 +690,112 @@ function ScheduleSection({
                 </ul>
             )}
         </section>
+    );
+}
+
+/**
+ * Render a YYYY-MM-DD as a readable label like "Wed, Apr 30, 2026".
+ * Avoids timezone surprises by parsing the date as a local-time midnight.
+ */
+function formatPickedDate(date: string): string {
+    if (!date) {
+        return '';
+    }
+
+    const [year, month, day] = date.split('-').map(Number);
+
+    if (!year || !month || !day) {
+        return date;
+    }
+
+    return new Date(year, month - 1, day).toLocaleDateString('en-PH', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
+/* ── Selection bar ─────────────────────────────────────────────────── */
+
+type SelectionBarProps = {
+    entry: ScheduleEntry;
+    indices: number[];
+    onClear: () => void;
+    buildBookingHref: (
+        courtId: string,
+        startsAt: string,
+        slotCount: number,
+    ) => string;
+};
+
+function SelectionBar({
+    entry,
+    indices,
+    onClear,
+    buildBookingHref,
+}: SelectionBarProps) {
+    const sorted = [...indices].sort((a, b) => a - b);
+    const firstIdx = sorted[0];
+    const lastIdx = sorted[sorted.length - 1];
+    const firstSlot = entry.slots[firstIdx];
+    const lastSlot = entry.slots[lastIdx];
+
+    if (!firstSlot || !lastSlot) {
+        return null;
+    }
+
+    const slotCount = sorted.length;
+    const slotMinutes = entry.court.slot_minutes;
+    const totalMinutes = slotCount * slotMinutes;
+    const hours = totalMinutes / 60;
+    const total = parseFloat(entry.court.hourly_rate) * hours;
+
+    const endsLabel = new Date(lastSlot.ends_at).toLocaleTimeString('en-PH', {
+        hour: 'numeric',
+        minute: 'numeric',
+        timeZone: 'Asia/Manila',
+    });
+
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f37021]/30 bg-[#f37021]/8 px-7 py-4">
+            <div className="flex items-center gap-4">
+                <button
+                    type="button"
+                    onClick={onClear}
+                    aria-label="Clear selection"
+                    className="flex size-7 items-center justify-center rounded-full border border-[#3e2817]/20 bg-white text-[#3e2817] transition hover:border-[#3e2817]/40 hover:text-[#991b1b]"
+                >
+                    <X className="size-3.5" aria-hidden />
+                </button>
+                <div className="space-y-0.5">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-[#5c3a21]">
+                        {entry.court.name} ·{' '}
+                        {hours === 1 ? '1 hour' : `${hours} hours`} ·{' '}
+                        {slotCount} {slotCount === 1 ? 'slot' : 'slots'}
+                    </p>
+                    <p className="font-display text-base font-bold tracking-[-0.01em] text-[#3e2817]">
+                        {firstSlot.label} – {endsLabel}
+                    </p>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+                <p className="font-display text-lg font-bold tracking-[-0.01em] text-[#3e2817]">
+                    {formatPHP(total)}
+                </p>
+                <Link
+                    href={buildBookingHref(
+                        entry.court.id,
+                        firstSlot.starts_at,
+                        slotCount,
+                    )}
+                    className="inline-flex items-center gap-2 bg-[#3e2817] px-5 py-2.5 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-[#2a1a0e]"
+                >
+                    Proceed to checkout
+                    <ArrowRight className="size-3" aria-hidden />
+                </Link>
+            </div>
+        </div>
     );
 }

@@ -37,6 +37,8 @@ class Venue extends Model
         'longitude',
         'contact_phone',
         'contact_email',
+        'gcash_account_name',
+        'gcash_mobile_number',
         'facebook_url',
         'instagram_url',
         'twitter_url',

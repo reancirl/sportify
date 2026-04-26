@@ -21,6 +21,7 @@ use App\Models\VenueOperatingHour;
 use App\Models\VenueStaffMember;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -129,9 +130,9 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
-    private function createOwners(): \Illuminate\Support\Collection
+    private function createOwners(): Collection
     {
         $owners = collect();
 
@@ -157,9 +158,9 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
-    private function createPlayers(): \Illuminate\Support\Collection
+    private function createPlayers(): Collection
     {
         $players = collect();
         $skillLevels = [
@@ -319,6 +320,8 @@ class DemoDataSeeder extends Seeder
             'longitude' => $bp['lng'],
             'contact_phone' => $bp['phone'],
             'contact_email' => $bp['email'],
+            'gcash_account_name' => $owner->name,
+            'gcash_mobile_number' => str_replace([' ', '+63 '], ['', '0'], $bp['phone']),
             'cover_image_path' => $bp['cover'],
             'timezone' => 'Asia/Manila',
             'approved_by' => $approver->id,
@@ -348,9 +351,9 @@ class DemoDataSeeder extends Seeder
 
     /**
      * @param  array<string, mixed>  $bp
-     * @return \Illuminate\Support\Collection<int, Court>
+     * @return Collection<int, Court>
      */
-    private function seedCourts(Venue $venue, array $bp): \Illuminate\Support\Collection
+    private function seedCourts(Venue $venue, array $bp): Collection
     {
         $courts = collect();
 
@@ -391,15 +394,15 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Court>  $courts
-     * @param  \Illuminate\Support\Collection<int, User>  $players
+     * @param  Collection<int, Court>  $courts
+     * @param  Collection<int, User>  $players
      * @param  array<string, mixed>  $bp
      */
     private function seedOpenPlaySession(
         Venue $venue,
         User $owner,
-        \Illuminate\Support\Collection $courts,
-        \Illuminate\Support\Collection $players,
+        Collection $courts,
+        Collection $players,
         array $bp,
     ): void {
         $session = OpenPlaySession::factory()->scheduled()->create([
@@ -429,12 +432,12 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Court>  $courts
-     * @param  \Illuminate\Support\Collection<int, User>  $players
+     * @param  Collection<int, Court>  $courts
+     * @param  Collection<int, User>  $players
      */
     private function seedSampleBookings(
-        \Illuminate\Support\Collection $courts,
-        \Illuminate\Support\Collection $players,
+        Collection $courts,
+        Collection $players,
         User $staff,
     ): void {
         if ($courts->count() < 2 || $players->count() < 4) {

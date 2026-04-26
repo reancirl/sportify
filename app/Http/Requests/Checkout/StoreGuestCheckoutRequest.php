@@ -1,19 +1,15 @@
 <?php
 
-namespace App\Http\Requests\Booking;
+namespace App\Http\Requests\Checkout;
 
-use App\Models\Booking;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreBookingRequest extends FormRequest
+class StoreGuestCheckoutRequest extends FormRequest
 {
-    /**
-     * Authorization is delegated to BookingPolicy@create.
-     */
     public function authorize(): bool
     {
-        return $this->user()?->can('create', Booking::class) ?? false;
+        return true;
     }
 
     /**
@@ -24,9 +20,19 @@ class StoreBookingRequest extends FormRequest
         return [
             'court_id' => ['required', 'uuid', 'exists:courts,id'],
             'starts_at' => ['required', 'date'],
-            // How many consecutive slots (defined by court.slot_minutes) to book.
-            // 1 = one slot, 4 = four consecutive slots.
             'slot_count' => ['nullable', 'integer', 'min:1', 'max:12'],
+
+            'guest_name' => ['required', 'string', 'max:120'],
+            'guest_email' => ['required', 'email', 'max:160'],
+            'guest_phone' => ['required', 'string', 'max:32'],
+
+            'reference_number' => ['nullable', 'string', 'max:64'],
+            'payment_proof' => [
+                'required',
+                'file',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120', // 5 MB
+            ],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
     }

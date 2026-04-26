@@ -103,6 +103,8 @@ export interface Venue {
     longitude: string | null;
     contact_phone: string | null;
     contact_email: string | null;
+    gcash_account_name: string | null;
+    gcash_mobile_number: string | null;
     facebook_url: string | null;
     instagram_url: string | null;
     twitter_url: string | null;

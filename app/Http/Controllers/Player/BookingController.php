@@ -40,6 +40,9 @@ class BookingController extends Controller
         $venueId = $request->string('venue')->toString();
         $courtId = $request->string('court')->toString();
         $date = $request->string('date')->toString();
+        $startsAtParam = $request->string('starts_at')->toString();
+        $slotCountParam = (int) $request->integer('slot_count', 1);
+        $slotCountParam = max(1, min(12, $slotCountParam));
 
         $venues = Venue::query()
             ->approved()
@@ -49,6 +52,7 @@ class BookingController extends Controller
 
         $slots = [];
         $selectedCourt = null;
+        $resolvedStartsAt = null;
 
         if ($courtId !== '') {
             $selectedCourt = Court::query()
@@ -58,11 +62,36 @@ class BookingController extends Controller
                 ->find($courtId);
 
             if ($selectedCourt) {
+                // Derive the date from starts_at if the caller passed one
+                // (e.g. coming from the public schedule deep-link).
+                if ($startsAtParam !== '' && $date === '') {
+                    try {
+                        $tz = $selectedCourt->venue->timezone ?? config('app.timezone');
+                        $date = Carbon::parse($startsAtParam)->setTimezone($tz)->toDateString();
+                    } catch (\Throwable) {
+                        // ignore — fall through to default date
+                    }
+                }
+
                 $targetDate = $date !== ''
                     ? Carbon::parse($date)
                     : Carbon::today(config('app.timezone'));
 
-                $slots = $this->bookings->availableSlots($selectedCourt, $targetDate);
+                $slots = collect($this->bookings->availableSlots($selectedCourt, $targetDate))
+                    ->filter(fn (array $slot) => $slot['available'])
+                    ->map(fn (array $slot) => $slot['starts_at']->toIso8601String())
+                    ->values()
+                    ->all();
+
+                if ($startsAtParam !== '') {
+                    try {
+                        $resolvedStartsAt = Carbon::parse($startsAtParam)
+                            ->setTimezone('UTC')
+                            ->toIso8601String();
+                    } catch (\Throwable) {
+                        $resolvedStartsAt = null;
+                    }
+                }
             }
         }
 
@@ -72,6 +101,8 @@ class BookingController extends Controller
                 'venue_id' => $venueId ?: null,
                 'court_id' => $courtId ?: null,
                 'date' => $date ?: null,
+                'starts_at' => $resolvedStartsAt,
+                'slot_count' => $slotCountParam,
             ],
             'court' => $selectedCourt,
             'slots' => $slots,
@@ -92,10 +123,11 @@ class BookingController extends Controller
                 $request->user(),
                 $court,
                 Carbon::parse($data['starts_at']),
+                (int) ($data['slot_count'] ?? 1),
             );
-        } catch (SlotUnavailableException $e) {
+        } catch (SlotUnavailableException) {
             return back()->withErrors([
-                'starts_at' => 'This slot is no longer available.',
+                'starts_at' => 'One or more slots in this booking are no longer available.',
             ])->withInput();
         }
 
