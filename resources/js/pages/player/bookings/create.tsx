@@ -80,7 +80,7 @@ export default function PlayerBookingsCreate({
 
     const handleVenueChange = (venueId: string) => {
         router.get(
-            '/player/bookings/create',
+            '/bookings/create',
             { venue_id: venueId },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -88,7 +88,7 @@ export default function PlayerBookingsCreate({
 
     const handleCourtChange = (courtId: string) => {
         router.get(
-            '/player/bookings/create',
+            '/bookings/create',
             {
                 venue_id: selected.venue_id,
                 court_id: courtId,
@@ -100,7 +100,7 @@ export default function PlayerBookingsCreate({
 
     const handleDateChange = (date: string) => {
         router.get(
-            '/player/bookings/create',
+            '/bookings/create',
             {
                 venue_id: selected.venue_id,
                 court_id: selected.court_id,
@@ -114,7 +114,7 @@ export default function PlayerBookingsCreate({
 
     const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        form.post('/player/bookings');
+        form.post('/bookings');
     };
 
     return (

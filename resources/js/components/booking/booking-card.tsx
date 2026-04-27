@@ -38,7 +38,7 @@ export function BookingCard({ booking }: Props) {
             </CardContent>
             <CardFooter>
                 <Link
-                    href={`/player/bookings/${booking.id}`}
+                    href={`/bookings/${booking.id}`}
                     className="text-sm font-medium text-primary hover:underline"
                 >
                     View details

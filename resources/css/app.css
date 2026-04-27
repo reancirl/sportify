@@ -9,7 +9,7 @@
 
 @theme {
     --font-sans:
-        'Geist', ui-sans-serif, system-ui, sans-serif,
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
     --font-serif:
@@ -20,7 +20,6 @@
     --color-cream: #faf5ec;
     --color-chocolate: #3e2817;
     --color-chocolate-soft: #5c3a21;
-    --color-chocolate-deep: #2a1a0e;
     --color-hermes: #f37021;
     --color-hermes-deep: #d85a14;
 
@@ -158,7 +157,7 @@
     .font-display {
         font-family: var(--font-display);
         font-feature-settings: 'kern', 'liga', 'dlig', 'ss01';
-        font-variation-settings: 'opsz' 144, 'SOFT' 50;
+        font-variation-settings: 'opsz' 144, 'SOFT' 50, 'WONK' 0;
     }
 
     .font-serif {
@@ -177,7 +176,7 @@
     color: var(--color-chocolate-soft);
 }
 
-/* Numbered almanac index — '— 01' '— 02' style markers */
+/* Numbered almanac index — '— 01' style markers */
 .almanac-index {
     font-family: var(--font-sans);
     font-size: 0.7rem;
@@ -185,15 +184,6 @@
     letter-spacing: 0.32em;
     text-transform: uppercase;
     color: var(--color-hermes);
-}
-
-/* Pull-quote — italic newsreader, large */
-.pull-quote {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-weight: 400;
-    line-height: 1.18;
-    letter-spacing: -0.01em;
 }
 
 /* Wordmark — italic .ph in hermès orange */
@@ -243,42 +233,9 @@
     inset: -200px;
     z-index: 9998;
     pointer-events: none;
-    opacity: 0.026;
+    opacity: 0.028;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     background-size: 200px 200px;
     animation: grain 0.5s steps(1) infinite;
     mix-blend-mode: multiply;
-}
-
-/* ── Sport icon bounce — CSS fallback ────────────────────────────────── */
-@keyframes sport-float {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-6px);
-    }
-}
-
-/* ── Shimmer sweep — reservation card hover ─────────────────────────── */
-@keyframes card-shimmer {
-    from {
-        transform: translateX(-100%) skewX(-15deg);
-    }
-    to {
-        transform: translateX(250%) skewX(-15deg);
-    }
-}
-
-/* ── Outline / stroke text — transparent fill, coloured stroke ──────── */
-.text-stroke {
-    -webkit-text-stroke: 1.5px currentColor;
-    color: transparent;
-}
-
-/* Thicker stroke for larger display sizes */
-.text-stroke-bold {
-    -webkit-text-stroke: 2.5px currentColor;
-    color: transparent;
 }

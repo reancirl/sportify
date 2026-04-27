@@ -1,577 +1,253 @@
-/**
- * SportIcon — animated inline SVG sport icons for the sports section tiles.
- *
- * Each icon self-draws via DrawSVGPlugin when it enters the viewport (once),
- * then runs a continuous motion loop (ball bounce, shuttle sway, etc.).
- * The component selects the correct icon based on the sport name string.
- *
- * Reduce-motion: static display, no animations.
- */
 import { useGSAP } from '@gsap/react';
-import { DrawSVGPlugin } from 'gsap/DrawSVGPlugin';
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useRef } from 'react';
-import type { RefObject } from 'react';
-import { cn } from '@/lib/utils';
+import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
+import { useId, useRef } from 'react';
 
-gsap.registerPlugin(DrawSVGPlugin, ScrollTrigger);
+gsap.registerPlugin(MotionPathPlugin);
 
-type Props = {
-    sportName: string;
-    className?: string;
-};
+/* ── Tennis racquet ───────────────────────────────────────────────────── */
+function TennisIcon({ className }: { className?: string }) {
+    const ref = useRef<SVGSVGElement>(null);
+    // Unique id so the clipPath doesn't collide if ever rendered twice
+    const rawId = useId();
+    const clipId = rawId.replace(/:/g, '-');
 
-export function SportIcon({ sportName, className }: Props) {
-    const name = sportName.toLowerCase();
-    if (name.includes('pickle')) {
-        return <PickleballIcon className={className} />;
-    }
-    if (name.includes('tennis')) {
-        return <TennisIcon className={className} />;
-    }
-    if (name.includes('badminton') || name.includes('shuttle')) {
-        return <BadmintonIcon className={className} />;
-    }
-    return <DefaultRacquetIcon className={className} />;
-}
-
-/* ── Shared draw-in hook ────────────────────────────────────────────── */
-
-function useDrawReveal(ref: RefObject<SVGSVGElement | null>) {
     useGSAP(
         () => {
-            if (!ref.current) {
-                return;
-            }
+            if (!ref.current) return;
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-            const drawTargets = ref.current.querySelectorAll<SVGGeometryElement>('[data-draw]');
-            if (drawTargets.length === 0) {
-                return;
-            }
-
-            const mm = gsap.matchMedia();
-
-            mm.add('(prefers-reduced-motion: no-preference)', () => {
-                gsap.fromTo(
-                    drawTargets,
-                    { drawSVG: '0%' },
-                    {
-                        drawSVG: '100%',
-                        duration: 1.5,
-                        ease: 'power2.inOut',
-                        stagger: 0.07,
-                        scrollTrigger: {
-                            trigger: ref.current,
-                            start: 'top 92%',
-                            once: true,
-                        },
-                    },
-                );
-                return () => mm.revert();
+            // Ball orbits AROUND the outside of the racket head (never through it).
+            // Relative offsets from starting position (40, 6) — top of orbit.
+            // Orbit ellipse: centre (40,34), rx≈28, ry≈30 — larger than the frame.
+            gsap.to(ref.current.querySelector('[data-ball]'), {
+                motionPath: {
+                    path: [
+                        { x: 20,  y: 9  },  // top-right
+                        { x: 28,  y: 30 },  // right
+                        { x: 20,  y: 52 },  // bottom-right
+                        { x: 0,   y: 60 },  // bottom
+                        { x: -20, y: 52 },  // bottom-left
+                        { x: -28, y: 30 },  // left
+                        { x: -20, y: 9  },  // top-left
+                        { x: 0,   y: 0  },  // back to top
+                    ],
+                },
+                duration: 3.2,
+                ease: 'none',
+                repeat: -1,
             });
 
-            mm.add('(prefers-reduced-motion: reduce)', () => {
-                gsap.set(drawTargets, { drawSVG: '100%' });
-                return () => mm.revert();
+            // Gentle racket sway
+            gsap.to(ref.current, {
+                rotate: 4,
+                duration: 2.4,
+                ease: 'sine.inOut',
+                yoyo: true,
+                repeat: -1,
+                transformOrigin: '50% 50%',
             });
         },
         { scope: ref },
     );
-}
-
-/* ── Pickleball — paddle side-view + wiffle ball ─────────────────────── */
-
-function PickleballIcon({ className }: { className?: string }) {
-    const svgRef = useRef<SVGSVGElement>(null);
-    const ballRef = useRef<SVGGElement>(null);
-
-    useDrawReveal(svgRef);
-
-    useGSAP(
-        () => {
-            if (!ballRef.current) {
-                return;
-            }
-
-            const mm = gsap.matchMedia();
-            mm.add('(prefers-reduced-motion: no-preference)', () => {
-                gsap.to(ballRef.current, {
-                    y: -8,
-                    duration: 0.75,
-                    ease: 'power2.out',
-                    repeat: -1,
-                    yoyo: true,
-                    delay: 1.6,
-                });
-                return () => mm.revert();
-            });
-        },
-        { scope: svgRef },
-    );
 
     return (
         <svg
-            ref={svgRef}
-            aria-hidden
-            viewBox="0 0 90 96"
+            ref={ref}
+            viewBox="0 0 80 92"
             fill="none"
-            className={cn('text-current', className)}
+            aria-hidden
+            className={className}
+            style={{ overflow: 'visible' }}
         >
-            {/* Paddle head — wide flat oval */}
-            <rect
-                data-draw
-                x="8"
-                y="22"
-                width="56"
-                height="40"
-                rx="10"
-                stroke="currentColor"
-                strokeWidth="1.8"
-            />
-            {/* Paddle center divider */}
-            <line
-                data-draw
-                x1="36"
-                y1="22"
-                x2="36"
-                y2="62"
-                stroke="currentColor"
-                strokeWidth="0.6"
-                opacity="0.35"
-            />
-            {/* Horizontal grid lines */}
-            <line
-                data-draw
-                x1="8"
-                y1="34"
-                x2="64"
-                y2="34"
-                stroke="currentColor"
-                strokeWidth="0.55"
-                opacity="0.35"
-            />
-            <line
-                data-draw
-                x1="8"
-                y1="50"
-                x2="64"
-                y2="50"
-                stroke="currentColor"
-                strokeWidth="0.55"
-                opacity="0.35"
-            />
-            {/* Handle */}
-            <rect
-                data-draw
-                x="27"
-                y="62"
-                width="18"
-                height="26"
-                rx="4"
-                stroke="currentColor"
-                strokeWidth="1.6"
-            />
-            {/* Grip wrap */}
-            <line
-                data-draw
-                x1="27"
-                y1="70"
-                x2="45"
-                y2="70"
-                stroke="currentColor"
-                strokeWidth="0.8"
-                opacity="0.45"
-            />
-            <line
-                data-draw
-                x1="27"
-                y1="77"
-                x2="45"
-                y2="77"
-                stroke="currentColor"
-                strokeWidth="0.8"
-                opacity="0.45"
-            />
-            {/* Ball group — bounces independently */}
-            <g ref={ballRef}>
-                {/* Wiffle ball outline */}
-                <circle
-                    data-draw
-                    cx="76"
-                    cy="16"
-                    r="12"
-                    stroke="var(--color-hermes)"
-                    strokeWidth="1.6"
-                />
-                {/* Ventilation holes — filled dots */}
-                <circle cx="71" cy="11" r="2" fill="var(--color-hermes)" opacity="0.6" />
-                <circle cx="80" cy="12" r="2" fill="var(--color-hermes)" opacity="0.6" />
-                <circle cx="83" cy="19" r="2" fill="var(--color-hermes)" opacity="0.6" />
-                <circle cx="76" cy="23" r="2" fill="var(--color-hermes)" opacity="0.6" />
-                <circle cx="69" cy="20" r="2" fill="var(--color-hermes)" opacity="0.6" />
+            <defs>
+                {/* clip strings to exactly the inside of the frame */}
+                <clipPath id={clipId}>
+                    <ellipse cx="40" cy="34" rx="21" ry="25" />
+                </clipPath>
+            </defs>
+
+            {/* Racket head frame */}
+            <ellipse cx="40" cy="34" rx="22" ry="26" stroke="currentColor" strokeWidth="2.5" />
+
+            {/* String grid — clipped so no string bleeds outside the frame */}
+            <g clipPath={`url(#${clipId})`} stroke="currentColor" strokeWidth="0.75" strokeOpacity="0.5">
+                <line x1="27" y1="8"  x2="27" y2="60" />
+                <line x1="32" y1="8"  x2="32" y2="60" />
+                <line x1="36" y1="8"  x2="36" y2="60" />
+                <line x1="40" y1="8"  x2="40" y2="60" />
+                <line x1="44" y1="8"  x2="44" y2="60" />
+                <line x1="48" y1="8"  x2="48" y2="60" />
+                <line x1="53" y1="8"  x2="53" y2="60" />
+                <line x1="18" y1="18" x2="62" y2="18" />
+                <line x1="18" y1="24" x2="62" y2="24" />
+                <line x1="18" y1="30" x2="62" y2="30" />
+                <line x1="18" y1="34" x2="62" y2="34" />
+                <line x1="18" y1="38" x2="62" y2="38" />
+                <line x1="18" y1="44" x2="62" y2="44" />
+                <line x1="18" y1="50" x2="62" y2="50" />
             </g>
-        </svg>
-    );
-}
 
-/* ── Tennis — classic oval racket + fuzzy ball ───────────────────────── */
-
-function TennisIcon({ className }: { className?: string }) {
-    const svgRef = useRef<SVGSVGElement>(null);
-    const ballRef = useRef<SVGGElement>(null);
-
-    useDrawReveal(svgRef);
-
-    useGSAP(
-        () => {
-            if (!ballRef.current) {
-                return;
-            }
-
-            const mm = gsap.matchMedia();
-            mm.add('(prefers-reduced-motion: no-preference)', () => {
-                // Ball gently orbits around the racket head
-                gsap.to(ballRef.current, {
-                    rotation: 360,
-                    transformOrigin: '-28px 30px',
-                    duration: 10,
-                    ease: 'none',
-                    repeat: -1,
-                    delay: 1.6,
-                });
-                return () => mm.revert();
-            });
-        },
-        { scope: svgRef },
-    );
-
-    return (
-        <svg
-            ref={svgRef}
-            aria-hidden
-            viewBox="0 0 86 90"
-            fill="none"
-            className={cn('text-current', className)}
-        >
-            {/* Racket oval frame */}
-            <ellipse
-                data-draw
-                cx="38"
-                cy="34"
-                rx="28"
-                ry="32"
-                stroke="currentColor"
-                strokeWidth="1.8"
-            />
-            {/* String grid — horizontal (approximate oval bounds) */}
-            <line
-                data-draw
-                x1="14"
-                y1="20"
-                x2="62"
-                y2="20"
-                stroke="currentColor"
-                strokeWidth="0.5"
-                opacity="0.38"
-            />
-            <line
-                data-draw
-                x1="10"
-                y1="28"
-                x2="66"
-                y2="28"
-                stroke="currentColor"
-                strokeWidth="0.5"
-                opacity="0.38"
-            />
-            <line
-                data-draw
-                x1="10"
-                y1="36"
-                x2="66"
-                y2="36"
-                stroke="currentColor"
-                strokeWidth="0.5"
-                opacity="0.38"
-            />
-            <line
-                data-draw
-                x1="10"
-                y1="44"
-                x2="66"
-                y2="44"
-                stroke="currentColor"
-                strokeWidth="0.5"
-                opacity="0.38"
-            />
-            <line
-                data-draw
-                x1="14"
-                y1="52"
-                x2="62"
-                y2="52"
-                stroke="currentColor"
-                strokeWidth="0.5"
-                opacity="0.38"
-            />
-            {/* String grid — vertical */}
-            <line
-                data-draw
-                x1="22"
-                y1="4"
-                x2="22"
-                y2="64"
-                stroke="currentColor"
-                strokeWidth="0.5"
-                opacity="0.38"
-            />
-            <line
-                data-draw
-                x1="30"
-                y1="3"
-                x2="30"
-                y2="65"
-                stroke="currentColor"
-                strokeWidth="0.5"
-                opacity="0.38"
-            />
-            <line
-                data-draw
-                x1="38"
-                y1="2"
-                x2="38"
-                y2="66"
-                stroke="currentColor"
-                strokeWidth="0.5"
-                opacity="0.38"
-            />
-            <line
-                data-draw
-                x1="46"
-                y1="3"
-                x2="46"
-                y2="65"
-                stroke="currentColor"
-                strokeWidth="0.5"
-                opacity="0.38"
-            />
-            <line
-                data-draw
-                x1="54"
-                y1="4"
-                x2="54"
-                y2="64"
-                stroke="currentColor"
-                strokeWidth="0.5"
-                opacity="0.38"
-            />
-            {/* Throat piece */}
+            {/* Handle throat */}
             <path
-                data-draw
-                d="M 28,66 Q 38,74 48,66"
-                stroke="currentColor"
-                strokeWidth="1.8"
+                d="M 33,58 L 36,68 L 44,68 L 47,58"
+                stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"
+                fill="currentColor" fillOpacity="0.08"
             />
-            {/* Handle shaft */}
-            <line
-                data-draw
-                x1="38"
-                y1="74"
-                x2="38"
-                y2="88"
-                stroke="currentColor"
-                strokeWidth="4.5"
-                strokeLinecap="round"
+            {/* Grip */}
+            <rect x="35" y="68" width="10" height="18" rx="3"
+                stroke="currentColor" strokeWidth="2"
+                fill="currentColor" fillOpacity="0.1"
             />
-            {/* Ball — orbiting */}
-            <g ref={ballRef}>
-                <circle
-                    cx="72"
-                    cy="8"
-                    r="10"
-                    stroke="var(--color-hermes)"
-                    strokeWidth="1.5"
-                />
-                {/* Ball seam curves */}
-                <path
-                    d="M 64,5 Q 72,8 64,12"
-                    stroke="var(--color-hermes)"
-                    strokeWidth="1.1"
-                    opacity="0.65"
-                />
-                <path
-                    d="M 80,5 Q 72,8 80,12"
-                    stroke="var(--color-hermes)"
-                    strokeWidth="1.1"
-                    opacity="0.65"
-                />
-            </g>
+            {/* Grip tape wrap */}
+            <line x1="35" y1="75" x2="45" y2="75" stroke="currentColor" strokeWidth="1" strokeOpacity="0.35" />
+
+            {/* Ball — starts at top of orbit, goes AROUND the head */}
+            <circle data-ball cx="40" cy="6" r="5" fill="#f37021" />
         </svg>
     );
 }
 
-/* ── Badminton — proper shuttlecock cone silhouette ─────────────────── */
-
-function BadmintonIcon({ className }: { className?: string }) {
-    const svgRef = useRef<SVGSVGElement>(null);
-
-    useDrawReveal(svgRef);
+/* ── Pickleball paddle ────────────────────────────────────────────────── */
+function PickleballIcon({ className }: { className?: string }) {
+    const ref = useRef<SVGSVGElement>(null);
 
     useGSAP(
         () => {
-            if (!svgRef.current) {
-                return;
-            }
+            if (!ref.current) return;
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-            const mm = gsap.matchMedia();
-            mm.add('(prefers-reduced-motion: no-preference)', () => {
-                gsap.to(svgRef.current, {
-                    rotate: 5,
-                    duration: 2.2,
-                    ease: 'sine.inOut',
-                    repeat: -1,
-                    yoyo: true,
-                    transformOrigin: '40px 78px',
-                    delay: 1.8,
-                });
-                return () => mm.revert();
+            // ball bounce
+            const ball = ref.current.querySelector('[data-ball]');
+            gsap.to(ball, {
+                y: -18,
+                duration: 0.55,
+                ease: 'power2.out',
+                yoyo: true,
+                repeat: -1,
+            });
+            // shadow scale
+            const shadow = ref.current.querySelector('[data-shadow]');
+            gsap.to(shadow, {
+                scaleX: 0.5,
+                opacity: 0.2,
+                duration: 0.55,
+                ease: 'power2.out',
+                yoyo: true,
+                repeat: -1,
+                transformOrigin: '50% 50%',
+            });
+            // gentle tilt
+            gsap.to(ref.current, {
+                rotate: -6,
+                duration: 2,
+                ease: 'sine.inOut',
+                yoyo: true,
+                repeat: -1,
+                transformOrigin: '40px 58px',
             });
         },
-        { scope: svgRef },
+        { scope: ref },
     );
 
     return (
         <svg
-            ref={svgRef}
-            aria-hidden
+            ref={ref}
             viewBox="0 0 80 90"
             fill="none"
-            className={cn('text-current', className)}
+            aria-hidden
+            className={className}
         >
-            {/* Cork base — dome/hemisphere shape */}
-            <path
-                data-draw
-                d="M 32,84 Q 28,78 28,72 Q 28,63 40,63 Q 52,63 52,72 Q 52,78 48,84 Z"
-                stroke="currentColor"
-                strokeWidth="1.6"
-            />
-            {/* Cork seam line */}
-            <line
-                data-draw
-                x1="28"
-                y1="72"
-                x2="52"
-                y2="72"
-                stroke="currentColor"
-                strokeWidth="0.7"
-                opacity="0.4"
-            />
-            {/* LEFT outer edge of feather cone — curves outward from cork to ring */}
-            <path
-                data-draw
-                d="M 33,63 Q 20,46 10,17"
-                stroke="currentColor"
-                strokeWidth="1.4"
-            />
-            {/* RIGHT outer edge of feather cone — curves outward */}
-            <path
-                data-draw
-                d="M 47,63 Q 60,46 70,17"
-                stroke="currentColor"
-                strokeWidth="1.4"
-            />
-            {/* Feather tips ring — hermes orange, the icon's money shot */}
-            <ellipse
-                data-draw
-                cx="40"
-                cy="16"
-                rx="30"
-                ry="7"
-                stroke="var(--color-hermes)"
-                strokeWidth="1.6"
-            />
-            {/* Interior feather shafts — from cork center up to ring */}
-            <line data-draw x1="40" y1="63" x2="14" y2="17" stroke="currentColor" strokeWidth="0.7" opacity="0.45" />
-            <line data-draw x1="40" y1="63" x2="24" y2="11" stroke="currentColor" strokeWidth="0.7" opacity="0.45" />
-            <line data-draw x1="40" y1="63" x2="40" y2="9"  stroke="currentColor" strokeWidth="0.8" opacity="0.55" />
-            <line data-draw x1="40" y1="63" x2="56" y2="11" stroke="currentColor" strokeWidth="0.7" opacity="0.45" />
-            <line data-draw x1="40" y1="63" x2="66" y2="17" stroke="currentColor" strokeWidth="0.7" opacity="0.45" />
-            {/* Mid-feather detail arc */}
-            <path
-                data-draw
-                d="M 22,40 Q 31,33 40,31 Q 49,33 58,40"
-                stroke="currentColor"
-                strokeWidth="0.65"
-                opacity="0.32"
-            />
+            {/* paddle body */}
+            <rect x="10" y="10" width="60" height="56" rx="28" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="2.5" />
+            {/* perforations — 3×3 grid */}
+            {[22, 40, 58].map((cx) =>
+                [24, 36, 48].map((cy) => (
+                    <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="4" fill="currentColor" fillOpacity="0.18" />
+                )),
+            )}
+            {/* handle */}
+            <rect x="32" y="65" width="16" height="20" rx="4" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="2" />
+            <line x1="40" y1="66" x2="40" y2="84" stroke="currentColor" strokeWidth="1" strokeOpacity="0.4" />
+            {/* wiffle ball */}
+            <g data-ball>
+                <circle cx="62" cy="18" r="9" fill="#f37021" />
+                <path d="M 56,14 Q 62,10 68,14" stroke="white" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                <path d="M 54,20 Q 62,24 70,20" stroke="white" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+            </g>
+            {/* shadow */}
+            <ellipse data-shadow cx="62" cy="30" rx="8" ry="3" fill="currentColor" fillOpacity="0.12" />
         </svg>
     );
 }
 
-/* ── Default — generic racquet + ball ───────────────────────────────── */
-
-function DefaultRacquetIcon({ className }: { className?: string }) {
-    const svgRef = useRef<SVGSVGElement>(null);
-    const ballRef = useRef<SVGCircleElement>(null);
-
-    useDrawReveal(svgRef);
+/* ── Badminton shuttlecock ────────────────────────────────────────────── */
+function BadmintonIcon({ className }: { className?: string }) {
+    const ref = useRef<SVGSVGElement>(null);
 
     useGSAP(
         () => {
-            if (!ballRef.current) {
-                return;
-            }
+            if (!ref.current) return;
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-            const mm = gsap.matchMedia();
-            mm.add('(prefers-reduced-motion: no-preference)', () => {
-                gsap.to(ballRef.current, {
-                    y: -6,
-                    duration: 0.85,
-                    ease: 'power2.out',
-                    repeat: -1,
-                    yoyo: true,
-                    delay: 1.6,
-                });
-                return () => mm.revert();
+            gsap.to(ref.current, {
+                rotate: 8,
+                y: -4,
+                duration: 1.8,
+                ease: 'sine.inOut',
+                yoyo: true,
+                repeat: -1,
+                transformOrigin: '40px 70px',
             });
         },
-        { scope: svgRef },
+        { scope: ref },
     );
 
     return (
         <svg
-            ref={svgRef}
-            aria-hidden
-            viewBox="0 0 84 88"
+            ref={ref}
+            viewBox="0 0 80 90"
             fill="none"
-            className={cn('text-current', className)}
+            aria-hidden
+            className={className}
         >
-            <ellipse
-                data-draw
-                cx="38"
-                cy="33"
-                rx="27"
-                ry="31"
-                stroke="currentColor"
-                strokeWidth="1.8"
-            />
-            <line data-draw x1="11" y1="21" x2="65" y2="21" stroke="currentColor" strokeWidth="0.5" opacity="0.38" />
-            <line data-draw x1="11" y1="33" x2="65" y2="33" stroke="currentColor" strokeWidth="0.5" opacity="0.38" />
-            <line data-draw x1="11" y1="45" x2="65" y2="45" stroke="currentColor" strokeWidth="0.5" opacity="0.38" />
-            <line data-draw x1="24" y1="4"  x2="24" y2="62" stroke="currentColor" strokeWidth="0.5" opacity="0.38" />
-            <line data-draw x1="38" y1="2"  x2="38" y2="64" stroke="currentColor" strokeWidth="0.5" opacity="0.38" />
-            <line data-draw x1="52" y1="4"  x2="52" y2="62" stroke="currentColor" strokeWidth="0.5" opacity="0.38" />
-            <path data-draw d="M 28,64 Q 38,72 48,64" stroke="currentColor" strokeWidth="1.8" />
-            <line data-draw x1="38" y1="72" x2="38" y2="86" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" />
-            <circle
-                ref={ballRef}
-                cx="72"
-                cy="12"
-                r="10"
-                stroke="var(--color-hermes)"
-                strokeWidth="1.6"
-            />
+            {/* feather ring */}
+            <ellipse cx="40" cy="22" rx="24" ry="7" stroke="#f37021" strokeWidth="2" fill="#f37021" fillOpacity="0.12" />
+            {/* outer cone — left edge */}
+            <path d="M 16,22 Q 20,46 28,60" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            {/* outer cone — right edge */}
+            <path d="M 64,22 Q 60,46 52,60" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            {/* feather shafts */}
+            <line x1="24" y1="22" x2="31" y2="60" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.55" />
+            <line x1="32" y1="17" x2="35" y2="60" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.55" />
+            <line x1="40" y1="15" x2="40" y2="60" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.55" />
+            <line x1="48" y1="17" x2="45" y2="60" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.55" />
+            <line x1="56" y1="22" x2="49" y2="60" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.55" />
+            {/* cork dome */}
+            <path d="M 28,60 Q 28,52 40,52 Q 52,52 52,60 Q 52,70 40,72 Q 28,70 28,60 Z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="2" />
+            {/* cork highlight */}
+            <ellipse cx="40" cy="58" rx="6" ry="3" fill="currentColor" fillOpacity="0.2" />
         </svg>
     );
+}
+
+/* ── Exports ─────────────────────────────────────────────────────────── */
+
+const icons = {
+    Tennis: TennisIcon,
+    Pickleball: PickleballIcon,
+    Badminton: BadmintonIcon,
+} as const;
+
+export type SportName = keyof typeof icons;
+
+export function SportIcon({
+    sport,
+    className,
+}: {
+    sport: SportName;
+    className?: string;
+}) {
+    const Icon = icons[sport];
+    return <Icon className={className} />;
 }

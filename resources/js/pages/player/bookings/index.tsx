@@ -30,7 +30,7 @@ export default function PlayerBookingsIndex({ bookings }: Props) {
                         description="All your court reservations."
                     />
                     <Button asChild>
-                        <Link href="/player/bookings/create">New booking</Link>
+                        <Link href="/bookings/create">New booking</Link>
                     </Button>
                 </div>
 
@@ -66,7 +66,7 @@ export default function PlayerBookingsIndex({ bookings }: Props) {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Link
-                                                href={`/player/bookings/${booking.id}`}
+                                                href={`/bookings/${booking.id}`}
                                                 className="text-sm font-medium text-primary hover:underline"
                                             >
                                                 View

@@ -28,8 +28,8 @@ export default function PublicLayout({ children, className }: Props) {
 
                     <nav className="hidden items-center gap-1 md:flex">
                         <NavLink href={venuesIndex().url} prefetch>Venues</NavLink>
-                        <NavLink href="/#membership">Membership</NavLink>
-                        <NavLink href="/#hosts">For Hosts</NavLink>
+                        <NavLink href="/club#membership">Membership</NavLink>
+                        <NavLink href="/club#hosts">For Hosts</NavLink>
                     </nav>
 
                     <div className="flex items-center gap-2 sm:gap-3">
@@ -85,13 +85,13 @@ export default function PublicLayout({ children, className }: Props) {
 
                         <FooterColumn title="The Club">
                             <FooterLink href={venuesIndex().url}>Venues</FooterLink>
-                            <FooterLink href="/#membership">Membership</FooterLink>
-                            <FooterLink href="/#sports">Sports</FooterLink>
+                            <FooterLink href="/club#membership">Membership</FooterLink>
+                            <FooterLink href="/club#sports">Sports</FooterLink>
                         </FooterColumn>
 
                         <FooterColumn title="For Hosts">
                             <FooterLink href={register().url}>List your venue</FooterLink>
-                            <FooterLink href="/#hosts">Partner with us</FooterLink>
+                            <FooterLink href="/club#hosts">Partner with us</FooterLink>
                         </FooterColumn>
 
                         <FooterColumn title="Account">

@@ -52,7 +52,7 @@ export function SessionCard({ session }: Props) {
             </CardContent>
             <CardFooter>
                 <Link
-                    href={`/player/sessions/${session.id}`}
+                    href={`/sessions/${session.id}`}
                     className="text-sm font-medium text-primary hover:underline"
                 >
                     View details

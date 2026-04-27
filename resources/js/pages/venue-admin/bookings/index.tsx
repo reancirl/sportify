@@ -57,7 +57,7 @@ export default function VenueAdminBookingsIndex({ venue, bookings }: Props) {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Link
-                                                href={`/venue-admin/bookings/${booking.id}`}
+                                                href={`/venue-admin/venues/${venue.id}/bookings/${booking.id}`}
                                                 className="text-sm font-medium text-primary hover:underline"
                                             >
                                                 View

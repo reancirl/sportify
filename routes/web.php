@@ -19,7 +19,8 @@ use App\Http\Controllers\VenueAdmin\VenueController as VenueAdminVenueController
 use Illuminate\Support\Facades\Route;
 
 // Public venue marketplace
-Route::get('/', [PublicVenueController::class, 'landing'])->name('home');
+Route::get('/', [PublicVenueController::class, 'home'])->name('home');
+Route::get('club', [PublicVenueController::class, 'landing'])->name('club');
 Route::get('venues', [PublicVenueController::class, 'index'])->name('venues.index');
 Route::get('venues/{venue:slug}', [PublicVenueController::class, 'show'])->name('venues.show');
 

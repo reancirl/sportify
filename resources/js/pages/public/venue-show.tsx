@@ -1,4 +1,8 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { SplitText } from 'gsap/SplitText';
 import {
     ArrowRight,
     Calendar,
@@ -10,7 +14,7 @@ import {
     Users,
     X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -22,6 +26,8 @@ import { useReveal } from '@/hooks/use-reveal';
 import { cn, formatInManila, formatPHP } from '@/lib/utils';
 import { login } from '@/routes';
 import type { Models, User } from '@/types';
+
+gsap.registerPlugin(ScrollTrigger, SplitText);
 
 type SessionWithCount = Models.OpenPlaySession & {
     players_count?: number;
@@ -117,16 +123,49 @@ export default function PublicVenueShow({
         );
     };
 
-    const heroRef = useReveal<HTMLElement>({
-        scroll: false,
-        stagger: 0.08,
-        y: 24,
-    });
+    const heroRef = useRef<HTMLElement>(null);
     const mainRef = useReveal<HTMLDivElement>({
         stagger: 0.1,
         y: 24,
         start: 'top 90%',
     });
+
+    useGSAP(
+        () => {
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reduce) return;
+
+            const labelEl = heroRef.current?.querySelector<HTMLElement>('[data-venue-label]');
+            const h1El = heroRef.current?.querySelector<HTMLElement>('[data-venue-h1]');
+
+            if (!h1El) return;
+
+            const split = new SplitText(h1El, { type: 'chars' });
+
+            const tl = gsap.timeline();
+
+            if (labelEl) {
+                tl.from(labelEl, { opacity: 0, y: 10, duration: 0.5 }, 0.1);
+            }
+
+            tl.from(
+                split.chars,
+                {
+                    opacity: 0,
+                    rotateX: -80,
+                    y: 18,
+                    transformOrigin: '50% 100%',
+                    transformPerspective: 700,
+                    duration: 0.6,
+                    stagger: { amount: 0.5, from: 'start' },
+                },
+                0.3,
+            );
+
+            return () => split.revert();
+        },
+        { scope: heroRef },
+    );
 
     return (
         <>
@@ -136,9 +175,9 @@ export default function PublicVenueShow({
                 {/* — Hero — */}
                 <section
                     ref={heroRef}
-                    className="overflow-hidden border border-[#3e2817]/15 bg-white"
+                    className="overflow-hidden bg-[#3e2817]"
                 >
-                    <div data-reveal className="relative aspect-[21/9] w-full bg-[#efe6d4]">
+                    <div className="relative aspect-[21/9] w-full bg-[#efe6d4]">
                         {cover ? (
                             <img
                                 src={cover}
@@ -165,14 +204,20 @@ export default function PublicVenueShow({
                     </div>
 
                     <div className="flex flex-col gap-6 px-7 py-8 sm:flex-row sm:items-end sm:justify-between sm:px-10 sm:py-10">
-                        <div data-reveal className="space-y-3">
-                            <p className="editorial-label">
+                        <div className="space-y-3">
+                            <p
+                                className="editorial-label text-[#faf5ec]/55"
+                                data-venue-label
+                            >
                                 {venue.city}, {venue.province}
                             </p>
-                            <h1 className="font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-[1.05] tracking-[-0.02em] text-[#3e2817]">
+                            <h1
+                                className="font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-[1.05] tracking-[-0.02em] text-[#faf5ec]"
+                                data-venue-h1
+                            >
                                 {venue.name}
                             </h1>
-                            <p className="flex items-center gap-1.5 font-serif text-sm text-[#5c3a21]">
+                            <p className="flex items-center gap-1.5 font-serif text-sm text-[#faf5ec]/65">
                                 <MapPin className="size-4" aria-hidden />
                                 {venue.address_line}, {venue.city}, {venue.province}
                             </p>
@@ -495,6 +540,39 @@ function ScheduleSection({
 
     const clearSelection = () => setSelection(null);
 
+    const slotsListRef = useRef<HTMLUListElement>(null);
+
+    useEffect(() => {
+        const ul = slotsListRef.current;
+        if (!ul) return;
+
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce) return;
+
+        const slots = ul.querySelectorAll<HTMLElement>('[data-slot]');
+        if (slots.length === 0) return;
+
+        gsap.set(slots, { opacity: 0, y: 10 });
+
+        ScrollTrigger.batch(slots, {
+            onEnter: (batch) =>
+                gsap.to(batch, {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.45,
+                    ease: 'power3.out',
+                    stagger: 0.025,
+                    overwrite: true,
+                }),
+            start: 'top 92%',
+            once: true,
+        });
+
+        return () => {
+            ScrollTrigger.getAll().forEach((t) => t.kill());
+        };
+    }, [schedule]);
+
     return (
         <section
             data-reveal
@@ -608,7 +686,7 @@ function ScheduleSection({
                     The venue is closed on this day.
                 </p>
             ) : (
-                <ul className="divide-y divide-[#3e2817]/10">
+                <ul ref={slotsListRef} className="divide-y divide-[#3e2817]/10">
                     {schedule.map((entry) => (
                         <li key={entry.court.id} className="px-7 py-5">
                             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -643,6 +721,7 @@ function ScheduleSection({
                                             return (
                                                 <span
                                                     key={slot.starts_at}
+                                                    data-slot
                                                     className="inline-flex h-9 items-center justify-center rounded-md bg-[#efe6d4] text-[11px] font-medium uppercase tracking-[0.12em] text-[#5c3a21]/55 line-through"
                                                     aria-label={`${slot.label} — booked`}
                                                 >
@@ -662,6 +741,7 @@ function ScheduleSection({
                                             <button
                                                 key={slot.starts_at}
                                                 type="button"
+                                                data-slot
                                                 aria-pressed={isSelected}
                                                 onClick={() =>
                                                     toggleSlot(

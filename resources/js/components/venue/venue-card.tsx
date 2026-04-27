@@ -22,7 +22,7 @@ export function VenueCard({ venue, href }: Props) {
     return (
         <Link
             href={targetHref}
-            className="group flex h-full flex-col border border-[#3e2817]/15 bg-white transition hover:border-[#3e2817]/35 hover:shadow-[0_30px_50px_-30px_rgba(62,40,23,0.3)]"
+            className="group flex h-full flex-col border border-[#3e2817]/22 bg-white shadow-[0_4px_20px_-8px_rgba(62,40,23,0.1)] transition hover:border-[#3e2817]/35 hover:shadow-[0_20px_40px_-16px_rgba(62,40,23,0.28)]"
         >
             <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#efe6d4]">
                 {cover ? (
@@ -85,7 +85,7 @@ export function VenueCard({ venue, href }: Props) {
                     <p className="text-[11px] uppercase tracking-[0.22em] text-[#5c3a21]">
                         {courtsCount} {courtsCount === 1 ? 'court' : 'courts'}
                     </p>
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.22em] text-[#3e2817] transition group-hover:text-[#f37021]">
+                    <span className="inline-flex items-center gap-1.5 border border-[#3e2817]/20 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.22em] text-[#3e2817] transition group-hover:border-[#f37021]/40 group-hover:text-[#f37021]">
                         View &amp; book
                         <ArrowRight className="size-3" aria-hidden />
                     </span>

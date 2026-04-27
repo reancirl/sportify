@@ -1,28 +1,16 @@
 import { useGSAP } from '@gsap/react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import gsap from 'gsap';
-import { SplitText } from 'gsap/SplitText';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ArrowRight, Search } from 'lucide-react';
-import { useRef, useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
-import { AnimatedCounter } from '@/components/landing/animated-counter';
-import { BallTrajectory } from '@/components/landing/ball-trajectory';
-import { CourtOrnament } from '@/components/landing/court-ornament';
-import { CursorBall } from '@/components/landing/cursor-ball';
-import { FloatingBalls } from '@/components/landing/floating-balls';
-import { JerseyNumber } from '@/components/landing/jersey-number';
-import { MagneticLink } from '@/components/landing/magnetic-link';
-import { Marquee } from '@/components/landing/marquee';
-import { MiniCourt } from '@/components/landing/mini-court';
-import { ParticleField } from '@/components/landing/particle-field';
-import { ScoreboardStat } from '@/components/landing/scoreboard-stat';
-import { SectionDivider } from '@/components/landing/section-divider';
-import { SectionRail } from '@/components/landing/section-rail';
-import type { RailSection } from '@/components/landing/section-rail';
-import { SlashAccent } from '@/components/landing/slash-accent';
+import { SplitText } from 'gsap/SplitText';
+import { ArrowRight, MapPin, Search } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
+import { AnimatedStat } from '@/components/landing/animated-stat';
+import { FloatingOrbs } from '@/components/landing/floating-orbs';
+import { HeroCourt, MiniCourtEmblem } from '@/components/landing/hero-court';
 import { SportIcon } from '@/components/landing/sport-icon';
-import { PaginationNav } from '@/components/pagination-nav';
+import type { SportName } from '@/components/landing/sport-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -35,11 +23,11 @@ import {
 } from '@/components/ui/select';
 import { VenueCard } from '@/components/venue/venue-card';
 import { useReveal } from '@/hooks/use-reveal';
-import { cn } from '@/lib/utils';
+import { useTilt3D } from '@/hooks/use-tilt-3d';
 import { dashboard, login, register } from '@/routes';
-import { index as venuesIndex } from '@/routes/venues';
-import { create as venueAdminCreate } from '@/routes/venue-admin/venues';
-import type { Models } from '@/types';
+import type { Models, User } from '@/types';
+
+gsap.registerPlugin(SplitText, ScrollTrigger);
 
 type VenueListing = Models.Venue & {
     courts_count?: number;
@@ -56,23 +44,14 @@ type Props = {
     canRegister?: boolean;
 };
 
-const RAIL_SECTIONS: RailSection[] = [
-    { id: 'hero', label: 'Hero', index: '00' },
-    { id: 'sports', label: 'Sports', index: '01' },
-    { id: 'venues', label: 'Venues', index: '02' },
-    { id: 'membership', label: 'Membership', index: '03' },
-    { id: 'hosts', label: 'Hosts', index: '04' },
-];
-
 export default function Landing({
     venues,
     cities,
     filters,
     canRegister = true,
 }: Props) {
-    const { auth, sportify } = usePage().props;
-    const user = auth.user;
-    const { sports, region, brand } = sportify;
+    const { auth } = usePage().props;
+    const user = (auth as { user: User | null }).user;
 
     const [search, setSearch] = useState(filters.search ?? '');
     const [city, setCity] = useState<string>(filters.city ?? 'all');
@@ -89,550 +68,479 @@ export default function Landing({
         );
     };
 
-    /* ── Section refs ──────────────────────────────────────────────────── */
     const heroRef = useRef<HTMLElement>(null);
-    const ornamentRef = useRef<SVGSVGElement>(null);
-    const eyebrowRef = useRef<HTMLParagraphElement>(null);
-    const h1Ref = useRef<HTMLHeadingElement>(null);
-    const heroParagraphRef = useRef<HTMLParagraphElement>(null);
-    const heroCtaRef = useRef<HTMLDivElement>(null);
-    const heroCardRef = useRef<HTMLDivElement>(null);
-    const heroStatsRef = useRef<HTMLDivElement>(null);
-
-    const sportsRef = useReveal<HTMLElement>({ stagger: 0.12, y: 28 });
-    const venuesRef = useReveal<HTMLElement>({ stagger: 0.06, y: 28 });
-    const membershipRef = useRef<HTMLElement>(null);
+    const glowRef = useRef<HTMLDivElement>(null);
+    const sportsRef = useReveal<HTMLElement>({ stagger: 0.1, y: 32 });
+    const venueSectionRef = useRef<HTMLElement>(null);
+    const venueStripRef = useRef<HTMLDivElement>(null);
+    const membershipRef = useReveal<HTMLElement>({ stagger: 0.09, y: 28 });
     const hostsRef = useReveal<HTMLElement>({ stagger: 0.08, y: 24 });
 
-    const currentYear = new Date().getFullYear();
+    /* ── Cursor glow + hero scene horizontal mouse parallax ──────────── */
+    useEffect(() => {
+        const glow = glowRef.current;
+        if (!glow || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    /* ── Marquee items ─────────────────────────────────────────────────── */
-    const marqueeItems = [
-        ...sports.map((s) => s.name),
-        region.city,
-        'Members Club',
-        `Est. ${currentYear}`,
-        brand.name,
-        region.short_city,
-    ];
+        const onMove = (e: MouseEvent) => {
+            // Cursor glow blob
+            gsap.to(glow, {
+                x: e.clientX - 160,
+                y: e.clientY - 160,
+                duration: 0.9,
+                ease: 'power3.out',
+                overwrite: 'auto',
+            });
 
-    /* ── Hero entrance timeline (SplitText H1) ────────────────────────── */
+            // Hero background layers drift horizontally with the cursor
+            // (only active while the cursor is within the hero section)
+            const hero = heroRef.current;
+            if (hero) {
+                const rect = hero.getBoundingClientRect();
+                if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                    const nx = e.clientX / rect.width - 0.5; // –0.5 → 0.5
+                    const bg = hero.querySelector<HTMLElement>('[data-hero-bg]');
+                    const orbs = hero.querySelector<HTMLElement>('[data-hero-orbs]');
+                    // bg moves slower, orbs faster (parallax depth)
+                    if (bg) {
+                        gsap.to(bg, { x: nx * 22, duration: 1.4, ease: 'power3.out', overwrite: 'auto' });
+                    }
+                    if (orbs) {
+                        gsap.to(orbs, { x: nx * 40, duration: 1.0, ease: 'power3.out', overwrite: 'auto' });
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('mousemove', onMove, { passive: true });
+        return () => window.removeEventListener('mousemove', onMove);
+    }, []);
+
+    /* ── Hero entrance ──────────────────────────────────────────────── */
     useGSAP(
         () => {
-            if (!heroRef.current) {
+            if (!heroRef.current) return;
+
+            const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            const label = heroRef.current.querySelector('[data-hero-label]');
+            const h1 = heroRef.current.querySelector('[data-hero-h1]');
+            const body = heroRef.current.querySelector('[data-hero-body]');
+            const ctas = heroRef.current.querySelector('[data-hero-ctas]');
+            const stats = heroRef.current.querySelectorAll('[data-hero-stat]');
+            const card = heroRef.current.querySelector('[data-hero-card]');
+            const divider = heroRef.current.querySelector('[data-hero-divider]');
+
+            if (reduced) {
+                gsap.set([label, h1, body, ctas, stats, card, divider], { opacity: 1, y: 0, x: 0 });
                 return;
             }
 
-            const mm = gsap.matchMedia();
-
-            mm.add('(prefers-reduced-motion: no-preference)', () => {
-                const tl = gsap.timeline({
-                    defaults: { ease: 'power3.out' },
-                    delay: 0.08,
-                });
-
-                // Eyebrow
-                tl.from(eyebrowRef.current, {
-                    opacity: 0,
-                    y: 12,
-                    duration: 0.5,
-                });
-
-                // SplitText H1 — character-by-character 3D reveal
-                let split: InstanceType<typeof SplitText> | null = null;
-                if (h1Ref.current) {
-                    split = new SplitText(h1Ref.current, { type: 'chars,words' });
-                    gsap.set(split.chars, { perspective: 400 });
-                    tl.from(
-                        split.chars,
-                        {
-                            y: 60,
-                            opacity: 0,
-                            rotateX: -50,
-                            transformOrigin: '50% 100%',
-                            duration: 0.55,
-                            stagger: 0.015,
-                            ease: 'power3.out',
-                        },
-                        '-=0.15',
-                    );
-                }
-
-                // Body paragraph
-                tl.from(
-                    heroParagraphRef.current,
-                    { opacity: 0, y: 20, duration: 0.7 },
-                    '-=0.35',
-                );
-
-                // CTAs
-                tl.from(
-                    heroCtaRef.current,
-                    { opacity: 0, y: 16, scale: 0.97, duration: 0.6 },
-                    '-=0.45',
-                );
-
-                // Reservation card
-                tl.from(
-                    heroCardRef.current,
-                    { opacity: 0, x: 40, duration: 1.0 },
-                    0.25,
-                );
-
-                // Ornament
-                tl.from(
-                    ornamentRef.current,
-                    { opacity: 0, scale: 0.9, duration: 1.6, ease: 'power2.out' },
-                    0.1,
-                );
-
-                // Stats strip
-                tl.from(
-                    heroStatsRef.current,
-                    { opacity: 0, y: 16, duration: 0.6 },
-                    '-=0.25',
-                );
-
-                // Parallax ornament on scroll
-                if (ornamentRef.current) {
-                    ScrollTrigger.create({
-                        trigger: heroRef.current,
-                        start: 'top top',
-                        end: 'bottom top',
-                        scrub: 1,
-                        onUpdate(self) {
-                            if (ornamentRef.current) {
-                                gsap.set(ornamentRef.current, {
-                                    yPercent: self.progress * 18,
-                                });
-                            }
-                        },
-                    });
-                }
-
-                return () => {
-                    split?.revert();
-                    mm.revert();
-                };
+            const split = new SplitText(h1, {
+                type: 'chars',
+                charsClass: 'inline-block',
             });
 
-            mm.add('(prefers-reduced-motion: reduce)', () => {
-                const targets = [
-                    eyebrowRef.current,
-                    h1Ref.current,
-                    heroParagraphRef.current,
-                    heroCtaRef.current,
-                    heroCardRef.current,
-                    ornamentRef.current,
-                    heroStatsRef.current,
-                ];
-                gsap.set(targets, { opacity: 1, y: 0, x: 0, clipPath: 'none', scale: 1 });
-                return () => mm.revert();
-            });
+            const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+            tl.from(label, { opacity: 0, y: 14, duration: 0.55 }, 0.3)
+                .from(
+                    split.chars,
+                    {
+                        // Each character flips in like a page turning in 3D space
+                        opacity: 0,
+                        rotateX: -80,
+                        y: 20,
+                        duration: 0.65,
+                        stagger: { amount: 0.7, from: 'start' },
+                        ease: 'power3.out',
+                        transformOrigin: '50% 100%',
+                        transformPerspective: 700,
+                    },
+                    0.5,
+                )
+                .from(body, { opacity: 0, y: 20, duration: 0.65 }, 1.1)
+                .from(ctas, { opacity: 0, y: 14, duration: 0.55 }, 1.2)
+                .from(divider, { scaleX: 0, transformOrigin: 'left center', duration: 0.7 }, 1.3)
+                .from(stats, { opacity: 0, y: 12, duration: 0.5, stagger: 0.09 }, 1.4)
+                .from(card, { opacity: 0, x: 56, duration: 1.2, ease: 'power4.out' }, 0.5);
+
+            return () => split.revert();
         },
         { scope: heroRef },
     );
 
-    /* ── Membership section — numeral flip ────────────────────────────── */
-    useGSAP(
-        () => {
-            if (!membershipRef.current) {
-                return;
-            }
+    /* ── Hero scroll parallax (vertical) ───────────────────────────── */
+    useEffect(() => {
+        const hero = heroRef.current;
+        if (!hero || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-            const mm = gsap.matchMedia();
+        const bgLayer = hero.querySelector<HTMLElement>('[data-hero-bg]');
+        const orbsLayer = hero.querySelector<HTMLElement>('[data-hero-orbs]');
+        const sts: ReturnType<typeof ScrollTrigger.create>[] = [];
 
-            mm.add('(prefers-reduced-motion: no-preference)', () => {
-                const numerals = membershipRef.current!.querySelectorAll<HTMLElement>('[data-numeral]');
-                const reveals = membershipRef.current!.querySelectorAll<HTMLElement>('[data-reveal]');
-
-                gsap.fromTo(
-                    reveals,
-                    { opacity: 0, y: 28 },
-                    {
-                        opacity: 1,
-                        y: 0,
-                        duration: 0.9,
-                        stagger: 0.09,
-                        ease: 'power3.out',
-                        scrollTrigger: {
-                            trigger: membershipRef.current,
-                            start: 'top 85%',
-                            once: true,
-                        },
-                    },
-                );
-
-                gsap.fromTo(
-                    numerals,
-                    { rotateX: 90, opacity: 0 },
-                    {
-                        rotateX: 0,
-                        opacity: 1,
-                        duration: 0.7,
-                        stagger: 0.15,
-                        ease: 'power2.out',
-                        scrollTrigger: {
-                            trigger: membershipRef.current,
-                            start: 'top 80%',
-                            once: true,
-                        },
-                    },
-                );
-
-                return () => mm.revert();
+        if (bgLayer) {
+            const t = gsap.to(bgLayer, {
+                y: -90,
+                ease: 'none',
+                scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: 2 },
             });
-
-            mm.add('(prefers-reduced-motion: reduce)', () => {
-                const all = membershipRef.current!.querySelectorAll<HTMLElement>('[data-reveal], [data-numeral]');
-                gsap.set(all, { opacity: 1, y: 0, rotateX: 0 });
-                return () => mm.revert();
+            if (t.scrollTrigger) sts.push(t.scrollTrigger);
+        }
+        if (orbsLayer) {
+            const t = gsap.to(orbsLayer, {
+                y: -45,
+                ease: 'none',
+                scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: 1.4 },
             });
-        },
-        { scope: membershipRef },
-    );
+            if (t.scrollTrigger) sts.push(t.scrollTrigger);
+        }
+
+        return () => sts.forEach((st) => st.kill());
+    }, []);
+
+    /* ── Membership value props — 3D scrub reveal ───────────────────── */
+    useEffect(() => {
+        const section = membershipRef.current;
+        if (!section || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        const props = section.querySelectorAll<HTMLElement>('[data-value-prop]');
+        if (!props.length) return;
+
+        // Set initial state: invisible, displaced down, rotated forward (like looking at the top of a card)
+        gsap.set(props, {
+            opacity: 0,
+            y: 48,
+            rotateX: 26,
+            transformOrigin: '50% 0%',
+            transformPerspective: 900,
+        });
+
+        const tl = gsap.timeline({
+            scrollTrigger: {
+                trigger: section,
+                start: 'top 70%',
+                end: 'center 35%',
+                scrub: 1.4,
+            },
+        });
+
+        // Stagger each prop's reveal along the scroll range
+        props.forEach((prop, i) => {
+            tl.to(prop, { opacity: 1, y: 0, rotateX: 0, ease: 'power2.out', duration: 1 }, i * 0.55);
+        });
+
+        return () => {
+            tl.scrollTrigger?.kill();
+            tl.kill();
+        };
+    }, []);
+
+    /* ── Venue strip — GSAP horizontal scroll (pin + scrub) ─────────── */
+    useEffect(() => {
+        const section = venueSectionRef.current;
+        const strip = venueStripRef.current;
+        if (!section || !strip || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        // How far the strip must travel: its full content width minus the viewport.
+        // Uses function form so GSAP re-evaluates on resize (invalidateOnRefresh).
+        const getDistance = () => Math.max(0, strip.scrollWidth - window.innerWidth);
+
+        const tween = gsap.to(strip, {
+            x: () => -getDistance(),
+            ease: 'none', // REQUIRED — keeps 1:1 mapping between scroll px and translate px
+            scrollTrigger: {
+                trigger: section,
+                pin: true,
+                start: 'top top',
+                end: () => `+=${getDistance()}`,
+                scrub: 1.2,
+                invalidateOnRefresh: true, // recalculate on window resize
+            },
+        });
+
+        return () => {
+            tween.scrollTrigger?.kill();
+            tween.kill();
+        };
+    }, [venues.data]);
 
     return (
         <>
-            <Head title={`A members-club for racquet sports in ${region.city}`}>
-                <meta
-                    name="description"
-                    content={`${brand.name}.${brand.tld} — a members-club for racquet courts in ${region.city}. Reserve courts, discover open play sessions, and meet serious players.`}
-                />
-            </Head>
+            <Head title="A members-club for racquet sports in Iligan City" />
 
-            {/* Film-grain luxury texture — fixed, full-page */}
             <div aria-hidden className="grain-overlay" />
 
-            {/* Fixed section rail — lg+ only */}
-            <SectionRail sections={RAIL_SECTIONS} />
+            {/* Cursor glow blob */}
+            <div
+                ref={glowRef}
+                aria-hidden
+                className="pointer-events-none fixed left-0 top-0 z-[9997] h-80 w-80 rounded-full bg-[#f37021]/[0.055] blur-[72px]"
+                style={{ willChange: 'transform' }}
+            />
 
-            {/* ——— 00 / Hero ——————————————————————————————————————————— */}
-            <section
-                ref={heroRef}
-                id="hero"
-                className="relative overflow-hidden bg-cream"
-            >
-                {/* Ambient floating orbs — depth & warmth */}
-                <FloatingBalls />
+            {/* ── Hero ─────────────────────────────────────────────────────── */}
+            <section ref={heroRef} className="relative overflow-hidden bg-[#faf5ec]">
+                {/* Parallax layer 1 — court geometry (slowest) */}
+                <div
+                    data-hero-bg
+                    className="pointer-events-none absolute inset-0"
+                    style={{ willChange: 'transform' }}
+                >
+                    <HeroCourt className="h-full w-full opacity-[0.06]" />
+                </div>
 
-                {/* Tactical court diagram ornament */}
-                <CourtOrnament ref={ornamentRef} />
+                {/* Parallax layer 2 — ambient orbs (faster) */}
+                <div
+                    data-hero-orbs
+                    className="absolute inset-0"
+                    style={{ willChange: 'transform' }}
+                >
+                    <FloatingOrbs />
+                </div>
 
-                {/* Cursor-following ball with trail — hero only */}
-                <CursorBall parentRef={heroRef} />
+                <div aria-hidden className="pointer-events-none absolute top-0 right-0 h-[3px] w-[40%] bg-[#f37021]" />
 
-                <div className="relative mx-auto grid w-full max-w-[1440px] gap-12 px-6 pt-16 pb-20 sm:px-10 sm:pt-20 sm:pb-24 lg:grid-cols-[1.55fr_1fr] lg:gap-20 lg:px-14 lg:pt-24 lg:pb-28">
-                    {/* Left — broadcast-grade copy */}
-                    <div className="space-y-8">
-                        {/* Eyebrow row with LIVE indicator */}
-                        <div className="flex items-center justify-between gap-4">
-                            <p
-                                ref={eyebrowRef}
-                                className="almanac-index"
-                            >
-                                — 00 / {region.city} ·{' '}
-                                {sports.map((s) => s.name).join(' · ')}
+                <div className="relative mx-auto grid w-full max-w-[1440px] items-center gap-12 px-6 pt-20 pb-24 sm:px-10 sm:pt-24 sm:pb-28 lg:grid-cols-[1fr_480px] lg:gap-16 lg:px-14 lg:pt-28 lg:pb-32 xl:grid-cols-[1fr_520px]">
+
+                    {/* Left: copy */}
+                    <div className="space-y-9">
+                        <div data-hero-label className="flex items-center gap-3">
+                            <span className="block h-px w-8 bg-[#f37021]" />
+                            <p className="editorial-label">
+                                Iligan City · Tennis · Pickleball · Badminton
                             </p>
-                            <LiveIndicator city={region.city} />
                         </div>
 
-                        {/*
-                         * H1: Fraunces Black — chunky display cut, NOT editorial.
-                         * Uppercase, ultra-tight tracking. SplitText per-char 3D reveal.
-                         */}
                         <h1
-                            ref={h1Ref}
-                            className="font-display text-[clamp(2.6rem,6.5vw,5.4rem)] font-black uppercase leading-[0.94] tracking-[-0.04em] text-chocolate"
+                            data-hero-h1
+                            className="font-sans text-[clamp(2.8rem,6.2vw,5.6rem)] font-black leading-[0.96] tracking-[-0.04em] text-[#3e2817]"
                         >
-                            A members-club for racquet sports in {region.city}
-                            <span className="text-hermes">.</span>
+                            A members-club<br />
+                            for racquet sports<br />
+                            in Iligan City<span className="text-[#f37021]">.</span>
                         </h1>
 
                         <p
-                            ref={heroParagraphRef}
-                            className="max-w-xl font-sans text-lg font-medium leading-relaxed text-chocolate-soft"
+                            data-hero-body
+                            className="max-w-[50ch] font-sans text-[1.05rem] leading-[1.75] text-[#5c3a21]"
                         >
-                            Reserve premium courts at curated venues across{' '}
-                            {region.short_city}. Discover open play sessions.
-                            Meet players who take the game as seriously as you
-                            do.
+                            Reserve premium courts at curated venues across Iligan.
+                            Discover open play sessions. Meet players who take the
+                            game as seriously as you do — without the queue at the
+                            front desk.
                         </p>
 
-                        <div
-                            ref={heroCtaRef}
-                            className="flex flex-wrap items-center gap-4 pt-2"
-                        >
+                        <div data-hero-ctas className="flex flex-wrap items-center gap-5">
                             {user ? (
                                 <MagneticLink
-                                    prefetch
                                     href={dashboard().url}
-                                    className="inline-flex bg-chocolate px-7 py-3.5 text-xs font-medium uppercase tracking-[0.22em] text-cream transition hover:bg-chocolate-deep"
+                                    className="group inline-flex items-center gap-2.5 bg-[#3e2817] px-8 py-4 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[#faf5ec] transition-colors hover:bg-[#2a1a0e]"
                                 >
                                     Open dashboard
-                                    <ArrowRight className="size-3.5" aria-hidden />
+                                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
                                 </MagneticLink>
                             ) : (
                                 <>
                                     {canRegister && (
                                         <MagneticLink
-                                            prefetch
                                             href={register().url}
-                                            className="inline-flex bg-chocolate px-7 py-3.5 text-xs font-medium uppercase tracking-[0.22em] text-cream transition hover:bg-chocolate-deep"
+                                            className="group inline-flex items-center gap-2.5 bg-[#3e2817] px-8 py-4 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[#faf5ec] transition-colors hover:bg-[#2a1a0e]"
                                         >
                                             Become a member
-                                            <ArrowRight
-                                                className="size-3.5"
-                                                aria-hidden
-                                            />
+                                            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
                                         </MagneticLink>
                                     )}
                                     <Link
-                                        prefetch
                                         href={login().url}
-                                        className="inline-flex items-center px-2 py-3.5 text-xs font-medium uppercase tracking-[0.22em] text-chocolate/80 underline-offset-8 transition hover:text-hermes hover:underline"
+                                        className="inline-flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[#3e2817]/70 transition hover:text-[#f37021]"
                                     >
                                         Members log in
+                                        <ArrowRight className="size-3" aria-hidden />
                                     </Link>
                                 </>
                             )}
                         </div>
 
-                        {/* ── B2: Scoreboard stat strip ─────────────────── */}
-                        <div
-                            ref={heroStatsRef}
-                            className="grid grid-cols-3 gap-px border border-chocolate/20 bg-chocolate/20"
-                        >
-                            <ScoreboardStat
-                                value={
-                                    <AnimatedCounter to={venues.total} duration={1.6} />
-                                }
-                                label={venues.total === 1 ? 'Verified venue' : 'Verified venues'}
-                            />
-                            <ScoreboardStat
-                                value={region.short_city}
-                                label={region.tagline}
-                            />
-                            <ScoreboardStat
-                                value={
-                                    <AnimatedCounter to={sports.length} duration={1.2} />
-                                }
-                                label="Sports"
-                            />
+                        <div>
+                            <div data-hero-divider className="mb-8 h-px bg-[#3e2817]/12" />
+                            <dl className="grid grid-cols-3 gap-6">
+                                <div data-hero-stat>
+                                    <AnimatedStat
+                                        value={venues.total.toString()}
+                                        label={venues.total === 1 ? 'Verified venue' : 'Verified venues'}
+                                    />
+                                </div>
+                                <div data-hero-stat>
+                                    <AnimatedStat value="Iligan" label="City of Majestic Falls" />
+                                </div>
+                                <div data-hero-stat>
+                                    <AnimatedStat value="3" label="Sports" />
+                                </div>
+                            </dl>
                         </div>
                     </div>
 
-                    {/* Right — reservation card */}
-                    <div ref={heroCardRef} className="lg:pt-2">
+                    {/* Right: reservation card */}
+                    <div data-hero-card>
                         <ReservationCard
                             search={search}
                             city={city}
                             cities={cities}
-                            regionCity={region.city}
-                            regionShortCity={region.short_city}
-                            sampleAreas={region.sample_areas}
                             onSearchChange={setSearch}
                             onCityChange={setCity}
                             onSubmit={handleSearch}
                         />
                     </div>
                 </div>
-
-                {/* Animated lob-shot trajectory arc */}
-                <BallTrajectory />
             </section>
 
-            {/* ——— B4: Marquee with diagonal racing stripe ————————————— */}
-            <div className="relative overflow-hidden">
-                {/* Diagonal racing stripe behind marquee text */}
-                <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 z-0"
-                    style={{
-                        background: `repeating-linear-gradient(
-                            -25deg,
-                            transparent,
-                            transparent 40px,
-                            var(--color-hermes-deep) 40px,
-                            var(--color-hermes-deep) 44px
-                        )`,
-                        opacity: 0.06,
-                    }}
-                />
-                <Marquee items={marqueeItems} duration={28} />
-            </div>
-
-            {/* ——— Court baseline divider ——————————————————————————————— */}
-            <SectionDivider className="bg-cream" />
-
-            {/* ——— 01 / The Sports —————————————————————————————————————— */}
-            <section
-                ref={sportsRef}
-                id="sports"
-                className="border-t border-chocolate/10 bg-cream"
-            >
+            {/* ── The Sports ───────────────────────────────────────────────── */}
+            <section ref={sportsRef} id="sports" className="border-t border-[#3e2817]/20 bg-[#faf5ec]">
                 <div className="mx-auto w-full max-w-[1440px] px-6 py-20 sm:px-10 sm:py-24 lg:px-14">
-                    <div data-reveal className="mb-12">
+                    <div data-reveal>
                         <SectionHeading
-                            index="01"
                             eyebrow="The Sports"
                             title={
                                 <>
-                                    Three{' '}
-                                    <span className="italic">games</span>
-                                    <span className="text-hermes">.</span>
-                                    <br />
-                                    One{' '}
-                                    <span className="text-stroke text-chocolate">
-                                        club
-                                    </span>
-                                    <span className="text-hermes">.</span>
+                                    Three games.{' '}
+                                    <span className="italic text-[#f37021]">One club.</span>
                                 </>
                             }
                         />
                     </div>
 
-                    <div className="grid gap-px overflow-hidden border border-chocolate/15 bg-chocolate/15 sm:grid-cols-3">
-                        {sports.map((sport) => (
-                            <div data-reveal key={sport.slug}>
-                                <SportTile
-                                    name={sport.name}
-                                    copy={sport.tagline}
-                                    featured={sport.featured}
-                                    season={sport.season}
-                                />
-                            </div>
-                        ))}
+                    {/* perspective on the grid gives sport tiles their shared 3D camera */}
+                    <div
+                        className="mt-12 grid gap-px overflow-hidden border border-[#3e2817]/25 bg-[#3e2817]/25 sm:grid-cols-3"
+                        style={{ perspective: '1000px' }}
+                    >
+                        <div data-reveal>
+                            <SportTile
+                                name="Tennis"
+                                copy="Hard, clay, and indoor courts maintained to a tournament standard."
+                            />
+                        </div>
+                        <div data-reveal>
+                            <SportTile
+                                name="Pickleball"
+                                copy="The fastest growing racquet sport in the Philippines — open play, every level."
+                                featured
+                            />
+                        </div>
+                        <div data-reveal>
+                            <SportTile
+                                name="Badminton"
+                                copy="Climate-controlled halls and high-ceiling courts for serious shuttle work."
+                            />
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* ——— Court baseline divider ——————————————————————————————— */}
-            <SectionDivider className="bg-cream" />
-
-            {/* ——— 02 / Featured Venues ——————————————————————————————— */}
+            {/* ── Featured Venues — horizontal GSAP scroll strip ───────────── */}
             <section
-                ref={venuesRef}
-                id="venues"
-                className="border-t border-chocolate/10 bg-cream"
+                ref={venueSectionRef}
+                className="border-t border-[#3e2817]/20 bg-[#faf5ec] overflow-hidden flex h-screen flex-col"
             >
-                <div className="mx-auto w-full max-w-[1440px] px-6 py-20 sm:px-10 sm:py-24 lg:px-14">
-                    <div
-                        data-reveal
-                        className="flex flex-wrap items-end justify-between gap-4"
-                    >
-                        <SectionHeading
-                            index="02"
-                            eyebrow={`The Venues · ${region.city}`}
-                            title={
-                                <>
-                                    Where
-                                    <br />
-                                    members{' '}
-                                    <span className="italic text-hermes">
-                                        play
-                                    </span>
-                                    <span className="text-hermes not-italic">.</span>
-                                </>
-                            }
-                            copy="A short list of venues, hand-vetted for quality of play, surface condition, and the welcome you receive at the door."
-                        />
+                {/* Header stays pinned at top while the card strip scrolls sideways */}
+                <div className="mx-auto w-full max-w-[1440px] px-6 pb-6 pt-14 sm:px-10 sm:pt-16 lg:px-14">
+                    <div className="flex flex-wrap items-end justify-between gap-4">
+                        <div className="flex items-center gap-5">
+                            <PulseDot />
+                            <SectionHeading
+                                eyebrow="The Venues · Iligan City"
+                                title={
+                                    <>
+                                        Where members{' '}
+                                        <span className="italic text-[#f37021]">play</span>
+                                    </>
+                                }
+                                copy="Scroll to explore — each venue hand-vetted for surface quality, atmosphere, and the welcome you receive at the door."
+                            />
+                        </div>
                         <Link
-                            prefetch
-                            href={venuesIndex().url}
-                            className="hidden items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-chocolate hover:text-hermes sm:inline-flex"
+                            href="/venues"
+                            className="hidden items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-[#3e2817] hover:text-[#f37021] sm:inline-flex"
                         >
                             Browse all venues
                             <ArrowRight className="size-3.5" aria-hidden />
                         </Link>
                     </div>
+                </div>
 
-                    {venues.data.length === 0 ? (
-                        <Card
-                            data-reveal
-                            className="mt-12 border-chocolate/15 bg-white"
-                        >
-                            <CardContent className="py-16 text-center font-sans text-chocolate-soft">
-                                No venues match your search yet. Try widening
-                                your filters.
+                {venues.data.length === 0 ? (
+                    <div className="mx-auto w-full max-w-[1440px] px-6 pb-20 sm:px-10 lg:px-14">
+                        <Card className="border-[#3e2817]/15 bg-white">
+                            <CardContent className="py-16 text-center font-sans text-[#5c3a21]">
+                                No venues match your search yet. Try widening your filters.
                             </CardContent>
                         </Card>
-                    ) : (
-                        <div className="mt-12 grid gap-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {venues.data.map((venue) => (
-                                <div data-reveal key={venue.id}>
-                                    <VenueCard venue={venue} />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    <div className="mt-12">
-                        <PaginationNav paginated={venues} />
                     </div>
-                </div>
+                ) : (
+                    /* GSAP translates this strip leftward as the user scrolls down */
+                    <div
+                        ref={venueStripRef}
+                        className="flex min-h-0 flex-1 items-stretch gap-7 pb-10 pl-6 pt-6 sm:pl-10 lg:pl-14"
+                        style={{ willChange: 'transform' }}
+                    >
+                        {venues.data.map((venue) => (
+                            <div
+                                key={venue.id}
+                                className="w-[340px] flex-shrink-0"
+                                style={{ perspective: '1200px' }}
+                            >
+                                <Tilt3D className="h-full">
+                                    <VenueCard venue={venue} />
+                                </Tilt3D>
+                            </div>
+                        ))}
+                        {/* Right breathing room so last card doesn't sit flush at scroll end */}
+                        <div className="w-6 flex-shrink-0 sm:w-10 lg:w-14" aria-hidden />
+                    </div>
+                )}
             </section>
 
-            {/* ——— 03 / Membership manifesto ——————————————————————————— */}
+            {/* ── Membership ───────────────────────────────────────────────── */}
             <section
                 ref={membershipRef}
                 id="membership"
-                className="relative overflow-hidden bg-chocolate text-cream"
+                className="relative overflow-hidden bg-[#3e2817] text-[#faf5ec]"
             >
-                {/* Constellation particle field — twinkling dot grid */}
-                <ParticleField
-                    cols={14}
-                    rows={9}
-                    className="pointer-events-none absolute inset-0"
-                />
+                <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-72 w-72 rounded-full border border-[#faf5ec]/[0.06]" />
+                <div aria-hidden className="pointer-events-none absolute -right-20 top-12 h-56 w-56 rounded-full border border-[#f37021]/10" />
+                <div aria-hidden className="pointer-events-none absolute -right-4 top-4 h-4 w-4 rounded-full bg-[#f37021]/20" />
 
-                <div className="relative mx-auto w-full max-w-[1440px] px-6 py-24 sm:px-10 sm:py-32 lg:px-14">
-                    <div data-reveal className="flex items-center gap-3">
-                        <div className="h-[2px] w-10 bg-hermes" />
-                        <p className="almanac-index text-hermes">
-                            03 / Membership
-                        </p>
-                    </div>
-
+                <div className="relative mx-auto w-full max-w-[1440px] px-6 py-24 sm:px-10 sm:py-28 lg:px-14">
+                    <p data-reveal className="editorial-label text-[#faf5ec]/65">
+                        Membership
+                    </p>
                     <h2
                         data-reveal
-                        className="mt-6 max-w-5xl font-display text-[clamp(3rem,6.5vw,5.8rem)] font-black uppercase leading-[0.86] tracking-[-0.05em]"
+                        className="mt-4 max-w-3xl font-sans text-[clamp(2.2rem,5vw,4rem)] font-black leading-[1.05] tracking-[-0.04em]"
                     >
-                        Booking,{' '}
-                        <span className="italic">refined</span>
-                        <br />
-                        to its{' '}
-                        <span className="text-stroke text-cream">
-                            essential
-                        </span>
-                        <br />
-                        gestures<span className="text-hermes">.</span>
+                        Booking, refined to its{' '}
+                        <span className="italic text-[#f37021]">essential</span>{' '}
+                        gestures.
                     </h2>
 
-                    {/* Broadcast lower-third pull quote */}
-                    <blockquote
-                        data-reveal
-                        className="mt-10 max-w-2xl border-l-4 border-hermes pl-6 font-sans text-[clamp(1rem,2vw,1.4rem)] font-medium text-cream/75"
-                    >
-                        The most powerful thing we offer is the absence of friction.
-                    </blockquote>
-
+                    {/* data-value-prop — animated by the 3D scrub useEffect above */}
                     <div className="mt-16 grid gap-12 md:grid-cols-3">
-                        <div data-reveal>
+                        <div data-value-prop>
                             <ValueProp
                                 number="01"
                                 title="Curated venues"
                                 copy="Every venue is reviewed before going live. Surface, lighting, amenities — all judged before approval."
                             />
                         </div>
-                        <div data-reveal>
+                        <div data-value-prop>
                             <ValueProp
                                 number="02"
                                 title="One-hour reservations"
-                                copy="Choose a court. Choose a time. Confirm. Speed is the luxury."
+                                copy="Choose a court. Choose a time. Confirm. The most luxurious thing we offer is the absence of friction."
+                                showBounce
                             />
                         </div>
-                        <div data-reveal>
+                        <div data-value-prop>
                             <ValueProp
                                 number="03"
                                 title="Open play, well-matched"
@@ -643,31 +551,20 @@ export default function Landing({
                 </div>
             </section>
 
-            {/* ——— Court baseline divider ——————————————————————————————— */}
-            <SectionDivider className="bg-cream" />
-
-            {/* ——— 04 / For Hosts ——————————————————————————————————————— */}
-            <section ref={hostsRef} id="hosts" className="bg-cream">
-                <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-6 py-20 sm:px-10 sm:py-28 lg:grid-cols-[1.2fr_1fr] lg:gap-16 lg:px-14">
+            {/* ── For Hosts ─────────────────────────────────────────────────── */}
+            <section ref={hostsRef} id="hosts" className="bg-[#faf5ec]">
+                <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-6 py-20 sm:px-10 sm:py-24 lg:grid-cols-[1.2fr_1fr] lg:gap-16 lg:px-14">
                     <div data-reveal className="space-y-6">
-                        <div className="flex items-center gap-3">
-                            <div className="h-[2px] w-10 bg-hermes" />
-                            <p className="almanac-index">04 / For Hosts</p>
-                        </div>
-                        <h2 className="font-display text-[clamp(3rem,6vw,5.4rem)] font-black uppercase leading-[0.86] tracking-[-0.05em] text-chocolate">
-                            Run a venue
-                            <br />
-                            worth{' '}
-                            <span className="italic text-hermes">
-                                discovering
-                            </span>
-                            <span className="text-hermes not-italic">?</span>
+                        <p className="editorial-label">For Hosts</p>
+                        <h2 className="font-sans text-[clamp(2rem,4vw,3.4rem)] font-black leading-[1.05] tracking-[-0.04em] text-[#3e2817]">
+                            Run a venue worth{' '}
+                            <span className="italic text-[#f37021]">discovering</span>?
                         </h2>
-                        <p className="max-w-xl font-sans text-lg font-medium leading-relaxed text-chocolate-soft">
-                            List your courts on {brand.name}
-                            <span className="font-black text-hermes">.{brand.tld}</span>{' '}
-                            and connect with members who value your craft. We
-                            handle the bookings; you do what you do best.
+                        <p className="max-w-xl font-sans text-lg leading-relaxed text-[#5c3a21]">
+                            List your courts on sportify
+                            <span className="italic text-[#f37021]">.ph</span> and
+                            connect with members who value your craft. We handle the
+                            bookings; you do what you do best.
                         </p>
                     </div>
 
@@ -677,35 +574,26 @@ export default function Landing({
                     >
                         {user ? (
                             <MagneticLink
-                                prefetch
-                                href={venueAdminCreate().url}
-                                className="inline-flex bg-chocolate px-7 py-3.5 text-xs font-medium uppercase tracking-[0.22em] text-cream transition hover:bg-chocolate-deep"
+                                href="/venue-admin/venues/create"
+                                className="inline-flex items-center gap-2 bg-[#3e2817] px-7 py-3.5 text-xs font-semibold uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-[#2a1a0e]"
                             >
                                 List your venue
-                                <ArrowRight
-                                    className="size-3.5"
-                                    aria-hidden
-                                />
+                                <ArrowRight className="size-3.5" aria-hidden />
                             </MagneticLink>
                         ) : (
                             <>
                                 {canRegister && (
                                     <MagneticLink
-                                        prefetch
                                         href={`${register().url}?intent=venue_owner`}
-                                        className="inline-flex bg-chocolate px-7 py-3.5 text-xs font-medium uppercase tracking-[0.22em] text-cream transition hover:bg-chocolate-deep"
+                                        className="inline-flex items-center gap-2 bg-[#3e2817] px-7 py-3.5 text-xs font-semibold uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-[#2a1a0e]"
                                     >
                                         Apply as host
-                                        <ArrowRight
-                                            className="size-3.5"
-                                            aria-hidden
-                                        />
+                                        <ArrowRight className="size-3.5" aria-hidden />
                                     </MagneticLink>
                                 )}
                                 <Link
-                                    prefetch
                                     href={login().url}
-                                    className="inline-flex items-center px-1 py-2 text-xs font-medium uppercase tracking-[0.22em] text-chocolate/80 underline-offset-8 transition hover:text-hermes hover:underline"
+                                    className="inline-flex items-center px-1 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-[#3e2817]/80 underline-offset-8 transition hover:text-[#f37021] hover:underline"
                                 >
                                     I already have an account
                                 </Link>
@@ -714,50 +602,56 @@ export default function Landing({
                     </div>
                 </div>
             </section>
-
-            {/* ——— Sign-off rule ——————————————————————————————————————— */}
-            <div className="border-t border-chocolate/15 bg-cream px-6 py-6 sm:px-10 lg:px-14">
-                <p className="almanac-index text-chocolate/40">
-                    {brand.name}
-                    <span className="font-black text-hermes">.{brand.tld}</span>
-                    {' '}· {region.city}
-                    <span className="text-hermes"> · </span>
-                    {currentYear}
-                </p>
-            </div>
         </>
     );
 }
 
-/* ── B1: LIVE broadcast indicator ────────────────────────────────────── */
+/* ── Magnetic link — CTA buttons with gentle cursor pull ─────────────── */
+function MagneticLink({
+    href,
+    className,
+    children,
+}: {
+    href: string;
+    className: string;
+    children: React.ReactNode;
+}) {
+    const ref = useRef<HTMLAnchorElement>(null);
 
-function LiveIndicator({ city }: { city: string }) {
+    useEffect(() => {
+        const el = ref.current;
+        if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        const onMove = (e: MouseEvent) => {
+            const rect = el.getBoundingClientRect();
+            const dx = (e.clientX - (rect.left + rect.width / 2)) * 0.28;
+            const dy = (e.clientY - (rect.top + rect.height / 2)) * 0.28;
+            gsap.to(el, { x: dx, y: dy, duration: 0.45, ease: 'power2.out', overwrite: 'auto' });
+        };
+        const onLeave = () => {
+            gsap.to(el, { x: 0, y: 0, duration: 0.9, ease: 'elastic.out(1, 0.4)', overwrite: 'auto' });
+        };
+
+        el.addEventListener('mousemove', onMove);
+        el.addEventListener('mouseleave', onLeave);
+        return () => {
+            el.removeEventListener('mousemove', onMove);
+            el.removeEventListener('mouseleave', onLeave);
+        };
+    }, []);
+
     return (
-        <div className="flex shrink-0 items-center gap-2">
-            {/*
-             * Pulsing dot — CSS keyframe.
-             * Reduce-motion: static (animation: none via Tailwind motion-safe).
-             */}
-            <span
-                aria-hidden
-                className="block h-2 w-2 rounded-full bg-hermes motion-safe:animate-pulse"
-            />
-            <span className="font-sans text-[10px] font-medium uppercase tracking-[0.28em] text-hermes">
-                Live · {city.toUpperCase()}
-            </span>
-        </div>
+        <Link ref={ref} href={href} className={className}>
+            {children}
+        </Link>
     );
 }
 
-/* ── Hero reservation card ───────────────────────────────────────────── */
-
+/* ── Reservation card — 3D perspective tilt + shine + Z-depth layers ─── */
 type ReservationCardProps = {
     search: string;
     city: string;
     cities: string[];
-    regionCity: string;
-    regionShortCity: string;
-    sampleAreas: string[];
     onSearchChange: (v: string) => void;
     onCityChange: (v: string) => void;
     onSubmit: (e: FormEvent<HTMLFormElement>) => void;
@@ -767,9 +661,6 @@ function ReservationCard({
     search,
     city,
     cities,
-    regionCity,
-    regionShortCity,
-    sampleAreas,
     onSearchChange,
     onCityChange,
     onSubmit,
@@ -777,211 +668,239 @@ function ReservationCard({
     return (
         <form
             onSubmit={onSubmit}
-            className="relative border-2 border-chocolate/20 bg-white p-7 shadow-[0_40px_80px_-30px_rgba(62,40,23,0.28)] sm:p-9"
+            className="relative bg-[#3e2817] p-8 text-[#faf5ec] shadow-[0_40px_80px_-20px_rgba(62,40,23,0.5)] sm:p-10"
         >
-            {/* Diagonal speed accent — top-right corner */}
-            <div aria-hidden className="pointer-events-none absolute top-0 right-0 h-10 w-10 overflow-hidden">
-                <div
-                    className="absolute"
-                    style={{
-                        top: '-2px',
-                        right: '-2px',
-                        width: '0',
-                        height: '0',
-                        borderStyle: 'solid',
-                        borderWidth: '0 40px 40px 0',
-                        borderColor: `transparent var(--color-hermes) transparent transparent`,
-                        opacity: 0.15,
-                    }}
-                />
+            <div className="absolute top-0 left-0 h-[3px] w-full bg-[#f37021]" />
+
+            <div className="mb-8 flex items-center gap-4">
+                <MiniCourtEmblem className="h-7 w-11 shrink-0 text-[#faf5ec]" />
+                <div>
+                    <p className="editorial-label text-[#faf5ec]/55">Reserve a court</p>
+                    <p className="mt-1 font-sans text-[1.45rem] font-black leading-tight tracking-[-0.03em]">
+                        Find your court.
+                    </p>
+                </div>
             </div>
 
-            <p className="almanac-index text-hermes">Reserve · Tonight</p>
-            <h2 className="mt-4 font-sans text-2xl font-black uppercase leading-tight tracking-[-0.03em] text-chocolate sm:text-[1.8rem]">
-                Find your court.
-            </h2>
-
-            <div className="mt-7 space-y-5">
-                <Field label="Venue or area">
-                    <div className="relative">
+            <div className="space-y-7">
+                <DarkField label="Venue or area">
+                    <div className="relative mt-2">
                         <Search
-                            className="absolute top-1/2 left-0 size-4 -translate-y-1/2 text-chocolate-soft/60"
+                            className="absolute top-1/2 left-0 size-[14px] -translate-y-1/2 text-[#faf5ec]/40"
                             aria-hidden
                         />
                         <Input
                             value={search}
                             onChange={(e) => onSearchChange(e.target.value)}
-                            placeholder={`e.g. ${sampleAreas.join(', ')}`}
-                            className="rounded-none border-0 border-b border-chocolate/25 bg-transparent px-0 pl-7 font-sans text-base text-chocolate shadow-none placeholder:text-chocolate-soft/45 focus-visible:border-hermes focus-visible:ring-0"
+                            placeholder="e.g. Pala-o, Tibanga, Suarez…"
+                            className="rounded-none border-0 border-b border-[#faf5ec]/20 bg-transparent px-0 pl-6 font-sans text-[1rem] text-[#faf5ec] shadow-none caret-[#f37021] placeholder:text-[#faf5ec]/30 focus-visible:border-[#f37021] focus-visible:ring-0"
                         />
                     </div>
-                </Field>
+                </DarkField>
 
-                <Field label="City">
-                    <Select value={city} onValueChange={onCityChange}>
-                        <SelectTrigger className="h-auto rounded-none border-0 border-b border-chocolate/25 bg-transparent px-0 py-2 font-sans text-base text-chocolate shadow-none focus:ring-0 focus-visible:border-hermes focus-visible:ring-0 [&>svg]:text-chocolate-soft/60">
-                            <SelectValue placeholder={regionCity} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">
-                                All of {regionShortCity}
-                            </SelectItem>
-                            {cities.map((c) => (
-                                <SelectItem key={c} value={c}>
-                                    {c}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </Field>
+                <DarkField label="City">
+                    <div className="relative mt-2">
+                        <MapPin
+                            className="absolute top-1/2 left-0 size-[14px] -translate-y-1/2 text-[#faf5ec]/40"
+                            aria-hidden
+                        />
+                        <Select value={city} onValueChange={onCityChange}>
+                            <SelectTrigger className="mt-0 h-auto rounded-none border-0 border-b border-[#faf5ec]/20 bg-transparent pl-6 pr-0 py-2 font-sans text-[1rem] text-[#faf5ec] shadow-none focus:ring-0 focus-visible:border-[#f37021] focus-visible:ring-0 [&>svg]:text-[#faf5ec]/50">
+                                <SelectValue placeholder="Iligan City" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-none border-[#3e2817]/20">
+                                <SelectItem value="all">All of Iligan</SelectItem>
+                                {cities.map((c) => (
+                                    <SelectItem key={c} value={c}>
+                                        {c}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </DarkField>
             </div>
 
-            <Button
-                type="submit"
-                size="lg"
-                className="mt-8 h-auto w-full rounded-none bg-hermes px-7 py-4 text-xs font-medium uppercase tracking-[0.22em] text-white shadow-none transition hover:bg-hermes-deep"
-            >
-                Search venues
-            </Button>
+            <div className="group relative mt-9 overflow-hidden">
+                <Button
+                    type="submit"
+                    size="lg"
+                    className="h-auto w-full rounded-none bg-[#f37021] px-8 py-4 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-white shadow-none transition-colors hover:bg-[#d85a14]"
+                >
+                    <span className="relative z-10 flex items-center gap-2">
+                        Search venues
+                        <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                    </span>
+                </Button>
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 -translate-x-full skew-x-[-18deg] bg-white/10 transition-transform duration-700 group-hover:translate-x-[220%]"
+                />
+            </div>
 
-            <p className="mt-5 text-center font-sans text-[11px] uppercase tracking-[0.22em] text-chocolate-soft/70">
+            <p className="mt-5 text-center text-[10.5px] font-sans uppercase tracking-[0.24em] text-[#faf5ec]/40">
                 No fees · Confirm in seconds
             </p>
         </form>
     );
 }
 
-function Field({
+function DarkField({
     label,
     children,
 }: {
     label: string;
-    children: ReactNode;
+    children: React.ReactNode;
 }) {
     return (
         <label className="block">
-            <span className="editorial-label mb-2 block">{label}</span>
+            <span className="block text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-[#faf5ec]/50">
+                {label}
+            </span>
             {children}
         </label>
     );
 }
 
-/* ── SectionHeading — Geist Black uppercase ──────────────────────────── */
+/* ── Accent components ───────────────────────────────────────────────── */
+function PulseDot() {
+    return (
+        <span aria-hidden className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center">
+            <span className="absolute inline-flex h-8 w-8 animate-ping rounded-full bg-[#f37021] opacity-30" />
+            <span className="relative inline-flex h-5 w-5 rounded-full bg-[#f37021]" />
+        </span>
+    );
+}
 
+function BounceBall() {
+    return (
+        <span aria-hidden className="inline-block h-[18px] w-[11px] animate-bounce rounded-full bg-[#f37021] opacity-75" />
+    );
+}
+
+/* ── Display primitives ──────────────────────────────────────────────── */
 function SectionHeading({
-    index,
     eyebrow,
     title,
     copy,
 }: {
-    index?: string;
     eyebrow: string;
-    title: ReactNode;
+    title: React.ReactNode;
     copy?: string;
 }) {
     return (
-        <div className="max-w-3xl">
-            <div className="relative">
-                {/* Orange speed-stripe accent */}
-                <div className="mb-4 h-[2px] w-10 bg-hermes" />
-
-                {/* Eyebrow row */}
-                {index && (
-                    <div className="mb-5 flex items-center gap-4">
-                        <JerseyNumber number={index} />
-                        <p className="almanac-index">{eyebrow}</p>
-                    </div>
-                )}
-                {!index && <p className="almanac-index mb-5">{eyebrow}</p>}
-
-                {/* Heading — Fraunces Black display, big but not breaking */}
-                <h2 className="font-display text-[clamp(2.8rem,6vw,5.2rem)] font-black uppercase leading-[0.9] tracking-[-0.04em] text-chocolate">
-                    {title}
-                </h2>
-
-                {copy && (
-                    <p className="mt-6 max-w-xl font-sans text-base font-medium leading-relaxed text-chocolate-soft">
-                        {copy}
-                    </p>
-                )}
-            </div>
+        <div className="max-w-2xl">
+            <p className="editorial-label">{eyebrow}</p>
+            <h2 className="mt-3 font-sans text-[clamp(2rem,4vw,3.2rem)] font-black leading-[1.05] tracking-[-0.04em] text-[#3e2817]">
+                {title}
+            </h2>
+            {copy && (
+                <p className="mt-4 max-w-xl font-sans text-base leading-relaxed text-[#5c3a21]">
+                    {copy}
+                </p>
+            )}
         </div>
     );
 }
 
-/* ── SportTile ───────────────────────────────────────────────────────── */
+/* ── Reusable 3D tilt wrapper ────────────────────────────────────────── */
+function Tilt3D({
+    children,
+    className,
+    intensityX = 5,
+    intensityY = 8,
+    hoverScale = 1.02,
+}: {
+    children: React.ReactNode;
+    className?: string;
+    intensityX?: number;
+    intensityY?: number;
+    hoverScale?: number;
+}) {
+    const ref = useTilt3D<HTMLDivElement>({ intensityX, intensityY, hoverScale });
+    return (
+        <div
+            ref={ref}
+            className={className}
+            style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}
+        >
+            {children}
+        </div>
+    );
+}
 
+/* ── Sport tile — 3D hover with Z-depth inner layers ────────────────── */
 function SportTile({
     name,
     copy,
     featured,
-    season,
 }: {
     name: string;
     copy: string;
     featured?: boolean;
-    season?: string | null;
 }) {
-    const eyebrow = featured ? (season ?? 'In season') : 'Sport';
+    const sportName = name as SportName;
+    const ref = useTilt3D<HTMLDivElement>({
+        intensityX: 5,
+        intensityY: 7,
+        hoverScale: 1.025,
+        resetDuration: 1.0,
+        resetEase: 'elastic.out(1, 0.45)',
+    });
 
     return (
         <div
-            className={cn(
-                'group relative flex flex-col gap-5 overflow-hidden p-9 transition-colors',
+            ref={ref}
+            className={
                 featured
-                    ? 'bg-chocolate text-cream'
-                    : 'bg-cream text-chocolate hover:bg-white',
-            )}
+                    ? 'group relative flex flex-col gap-5 overflow-hidden bg-[#3e2817] p-9 text-[#faf5ec]'
+                    : 'group relative flex flex-col gap-5 overflow-hidden bg-white p-9 text-[#3e2817] transition-colors hover:bg-[#faf5ec]'
+            }
+            style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}
         >
-            <p
-                className={cn(
-                    'almanac-index',
-                    featured ? 'text-hermes' : '',
-                )}
+            {/* Sport icon — large, bleeds off bottom-right so the animated ball stays visible */}
+            <div
+                aria-hidden
+                className={
+                    featured
+                        ? 'pointer-events-none absolute -right-2 -bottom-2 h-56 w-56 opacity-60'
+                        : 'pointer-events-none absolute -right-2 -bottom-2 h-56 w-56 opacity-40'
+                }
+                style={{ transform: 'translateZ(24px)' }}
             >
-                {eyebrow}
-            </p>
-
-            {/* Sport name: Fraunces display — editorial luxury */}
-            <h3 className="font-display text-[clamp(2rem,3.2vw,3rem)] font-black uppercase leading-[0.92] tracking-[-0.04em]">
-                {name}
-                <span className="text-hermes">.</span>
-            </h3>
-
-            {/* Animated sport-specific SVG icon — self-draws on scroll */}
-            <SportIcon
-                sportName={name}
-                className={cn(
-                    'pointer-events-none absolute right-5 bottom-5 h-28 w-28 transition-opacity duration-500 group-hover:opacity-60',
-                    featured ? 'text-cream opacity-[0.16]' : 'text-chocolate opacity-[0.12]',
-                )}
-            />
-
-            {/* Tiny court diagram — top-right accent */}
-            <MiniCourt
-                className={cn(
-                    'absolute right-5 top-5 h-10 w-14 opacity-10 transition-opacity group-hover:opacity-20',
-                    featured ? 'text-cream' : 'text-chocolate',
-                )}
-            />
+                <SportIcon sport={sportName} className="h-full w-full" />
+            </div>
 
             <p
-                className={cn(
-                    'font-sans text-sm font-medium leading-relaxed',
-                    featured ? 'text-cream/75' : 'text-chocolate-soft',
-                )}
+                className={featured ? 'editorial-label text-[#faf5ec]/65' : 'editorial-label'}
+                style={{ transform: 'translateZ(6px)' }}
+            >
+                {featured ? 'In season' : 'Sport'}
+            </p>
+            <h3
+                className="font-sans text-3xl font-black tracking-[-0.03em]"
+                style={{ transform: 'translateZ(14px)' }}
+            >
+                {name}
+            </h3>
+            <p
+                className={
+                    featured
+                        ? 'font-sans text-sm leading-relaxed text-[#faf5ec]/75'
+                        : 'font-sans text-sm leading-relaxed text-[#5c3a21]'
+                }
+                style={{ transform: 'translateZ(8px)' }}
             >
                 {copy}
             </p>
-
             <Link
-                href={venuesIndex().url}
-                className={cn(
-                    'mt-auto inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] transition',
+                href="/venues"
+                className={
                     featured
-                        ? 'text-hermes hover:text-white'
-                        : 'text-chocolate hover:text-hermes',
-                )}
+                        ? 'mt-auto inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#f37021] transition hover:text-white'
+                        : 'mt-auto inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#3e2817] transition hover:text-[#f37021]'
+                }
+                style={{ transform: 'translateZ(18px)' }}
             >
                 Browse venues <ArrowRight className="size-3" aria-hidden />
             </Link>
@@ -989,32 +908,31 @@ function SportTile({
     );
 }
 
-/* ── ValueProp ───────────────────────────────────────────────────────── */
-
 function ValueProp({
     number,
     title,
     copy,
+    showBounce,
 }: {
     number: string;
     title: string;
     copy: string;
+    showBounce?: boolean;
 }) {
     return (
-        <div className="space-y-4 border-t-2 border-hermes/40 pt-6">
-            {/* Giant jersey number */}
-            <p
-                data-numeral
-                className="font-display text-[5rem] font-black leading-none tracking-[-0.06em] text-hermes"
-            >
-                {number}
-            </p>
-            <h3 className="font-display text-[1.4rem] font-black uppercase leading-tight tracking-[-0.03em] text-cream">
-                {title}
-            </h3>
-            <p className="font-sans text-sm font-medium leading-relaxed text-cream/70">
-                {copy}
-            </p>
+        <div className="space-y-3 border-t border-[#faf5ec]/20 pt-6">
+            <div className="flex items-start justify-between gap-4">
+                <p className="font-sans text-sm font-bold tracking-[0.2em] text-[#f37021]">
+                    — {number}
+                </p>
+                {showBounce && (
+                    <div aria-hidden className="-mt-1">
+                        <BounceBall />
+                    </div>
+                )}
+            </div>
+            <h3 className="font-sans text-2xl font-black tracking-[-0.02em]">{title}</h3>
+            <p className="font-sans text-sm leading-relaxed text-[#faf5ec]/80">{copy}</p>
         </div>
     );
 }

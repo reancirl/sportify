@@ -17,6 +17,16 @@ class VenueController extends Controller
 {
     public function __construct(private readonly BookingService $bookings) {}
 
+    public function home(Request $request): Response
+    {
+        $payload = $this->indexPayload($request, perPage: 8);
+
+        return Inertia::render('public/home', [
+            ...$payload,
+            'canRegister' => Features::enabled(Features::registration()),
+        ]);
+    }
+
     public function landing(Request $request): Response
     {
         $payload = $this->indexPayload($request);
@@ -46,7 +56,7 @@ class VenueController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function indexPayload(Request $request): array
+    private function indexPayload(Request $request, int $perPage = 12): array
     {
         $city = $request->string('city')->toString();
         $search = $request->string('search')->toString();
@@ -67,7 +77,7 @@ class VenueController extends Controller
             ->withMin(['courts' => fn ($q) => $q->where('is_active', true)], 'hourly_rate')
             ->with(['images' => fn ($q) => $q->orderBy('sort_order')->limit(1)])
             ->orderBy('name')
-            ->paginate(12)
+            ->paginate($perPage)
             ->withQueryString();
 
         return [
