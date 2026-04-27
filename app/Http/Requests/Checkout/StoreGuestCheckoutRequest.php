@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Checkout;
 
+use App\Enums\PaymentProvider;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreGuestCheckoutRequest extends FormRequest
 {
@@ -33,6 +35,9 @@ class StoreGuestCheckoutRequest extends FormRequest
                 'mimes:jpg,jpeg,png,webp',
                 'max:5120', // 5 MB
             ],
+            // TODO: once a `provider` column is added to the payments table,
+            // store this value on the Payment record directly.
+            'payment_provider' => ['nullable', 'string', Rule::enum(PaymentProvider::class)],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
     }

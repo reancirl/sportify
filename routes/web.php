@@ -12,6 +12,7 @@ use App\Http\Controllers\Public\VenueController as PublicVenueController;
 use App\Http\Controllers\VenueAdmin\BookingController as VenueAdminBookingController;
 use App\Http\Controllers\VenueAdmin\CourtController as VenueAdminCourtController;
 use App\Http\Controllers\VenueAdmin\PaymentController as VenueAdminPaymentController;
+use App\Http\Controllers\VenueAdmin\PaymentMethodController as VenueAdminPaymentMethodController;
 use App\Http\Controllers\VenueAdmin\SessionController as VenueAdminSessionController;
 use App\Http\Controllers\VenueAdmin\StaffController;
 use App\Http\Controllers\VenueAdmin\VenueController as VenueAdminVenueController;
@@ -100,6 +101,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('payments/{payment}/reject', [VenueAdminPaymentController::class, 'reject'])
                     ->whereUuid('payment')
                     ->name('payments.reject');
+
+                Route::get('payment-methods', [VenueAdminPaymentMethodController::class, 'index'])
+                    ->name('payment-methods.index');
+                Route::post('payment-methods', [VenueAdminPaymentMethodController::class, 'store'])
+                    ->name('payment-methods.store');
+                Route::patch('payment-methods/{paymentMethod}', [VenueAdminPaymentMethodController::class, 'update'])
+                    ->whereUuid('paymentMethod')
+                    ->name('payment-methods.update');
+                Route::delete('payment-methods/{paymentMethod}', [VenueAdminPaymentMethodController::class, 'destroy'])
+                    ->whereUuid('paymentMethod')
+                    ->name('payment-methods.destroy');
 
                 Route::get('staff', [StaffController::class, 'index'])->name('staff.index');
                 Route::post('staff', [StaffController::class, 'store'])->name('staff.store');

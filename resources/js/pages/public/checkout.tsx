@@ -1,13 +1,14 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import {
+    AlertTriangle,
     ArrowLeft,
     ArrowRight,
     CheckCircle2,
     Copy,
     CreditCard,
     Lock,
-    Smartphone,
     Upload,
+    Wallet,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
@@ -15,8 +16,17 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cn, formatInManila, formatPHP } from '@/lib/utils';
+
+type PaymentMethod = {
+    id: string;
+    provider: string;
+    provider_label: string;
+    account_name: string;
+    mobile_number: string;
+};
 
 type Venue = {
     id: string;
@@ -25,10 +35,9 @@ type Venue = {
     city: string;
     province: string;
     timezone: string;
-    gcash_account_name: string | null;
-    gcash_mobile_number: string | null;
     contact_email: string | null;
     contact_phone: string | null;
+    payment_methods: PaymentMethod[];
 };
 
 type Court = {
@@ -62,6 +71,7 @@ type CheckoutForm = {
     guest_phone: string;
     reference_number: string;
     payment_proof: File | null;
+    payment_provider: string;
     notes: string;
 };
 
@@ -72,6 +82,8 @@ export default function PublicCheckout({ venue, court, reservation }: Props) {
     const fileRef = useRef<HTMLInputElement>(null);
     const [filePreview, setFilePreview] = useState<string | null>(null);
 
+    const firstMethod = venue.payment_methods[0] ?? null;
+
     const form = useForm<CheckoutForm>({
         court_id: court.id,
         starts_at: reservation.starts_at,
@@ -81,6 +93,7 @@ export default function PublicCheckout({ venue, court, reservation }: Props) {
         guest_phone: '',
         reference_number: '',
         payment_proof: null,
+        payment_provider: firstMethod?.provider ?? '',
         notes: '',
     });
 
@@ -120,8 +133,8 @@ export default function PublicCheckout({ venue, court, reservation }: Props) {
         }
     };
 
-    const hasGcash =
-        venue.gcash_account_name && venue.gcash_mobile_number;
+    const hasMethods = venue.payment_methods.length > 0;
+    const hasMultipleMethods = venue.payment_methods.length > 1;
 
     return (
         <>
@@ -142,8 +155,9 @@ export default function PublicCheckout({ venue, court, reservation }: Props) {
                         Confirm &amp; pay
                     </h1>
                     <p className="font-serif text-sm text-[#5c3a21]">
-                        Send payment via GCash, then upload the screenshot. The
-                        venue will verify and confirm your booking.
+                        Send payment via your preferred method, then upload the
+                        screenshot. The venue will verify and confirm your
+                        booking.
                     </p>
                 </header>
 
@@ -226,62 +240,47 @@ export default function PublicCheckout({ venue, court, reservation }: Props) {
                         {/* Payment instructions */}
                         <SectionCard
                             eyebrow="Step 2"
-                            title="Send payment via GCash"
+                            title="Send payment"
                             description={`Send ${formatPHP(reservation.total_amount)} to the account below. You'll upload the screenshot in step 3.`}
                         >
-                            {hasGcash ? (
-                                <div className="rounded-md border border-[#3e2817]/15 bg-[#faf5ec]/60 p-5">
-                                    <div className="mb-4 flex items-center gap-2.5">
-                                        <span className="flex size-9 items-center justify-center rounded-md bg-[#0080ff] text-white">
-                                            <Smartphone className="size-4" aria-hidden />
-                                        </span>
-                                        <div>
-                                            <p className="font-display text-base font-bold text-[#3e2817]">
-                                                GCash
-                                            </p>
-                                            <p className="text-[10px] uppercase tracking-[0.22em] text-[#5c3a21]">
-                                                Manual verification
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <CopyRow
-                                        label="Account name"
-                                        value={venue.gcash_account_name!}
-                                        onCopy={copyToClipboard}
+                            {!hasMethods ? (
+                                <div className="flex items-start gap-3 rounded-md border border-dashed border-[#f37021]/40 bg-[#fff7ed] p-4">
+                                    <AlertTriangle
+                                        className="mt-0.5 size-4 shrink-0 text-[#f37021]"
+                                        aria-hidden
                                     />
-                                    <CopyRow
-                                        label="Mobile number"
-                                        value={venue.gcash_mobile_number!}
-                                        onCopy={copyToClipboard}
-                                    />
-                                    <p className="mt-4 border-t border-[#3e2817]/10 pt-3 font-serif text-sm text-[#5c3a21]">
-                                        Send{' '}
-                                        <span className="font-display font-bold text-[#3e2817]">
-                                            {formatPHP(reservation.total_amount)}
-                                        </span>{' '}
-                                        to this account.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="rounded-md border border-dashed border-[#3e2817]/25 bg-[#faf5ec] p-5">
                                     <p className="font-serif text-sm text-[#5c3a21]">
-                                        This venue hasn't published a GCash
-                                        account yet. Please contact{' '}
+                                        This venue hasn't set up payment yet.
+                                        Please contact{' '}
                                         {venue.contact_email ??
                                             venue.contact_phone ??
                                             'the venue'}{' '}
-                                        to arrange payment, then upload your
-                                        proof below.
+                                        directly to arrange payment.
                                     </p>
                                 </div>
+                            ) : hasMultipleMethods ? (
+                                <PaymentMethodTabs
+                                    methods={venue.payment_methods}
+                                    selectedProvider={form.data.payment_provider}
+                                    onSelectProvider={(v) =>
+                                        form.setData('payment_provider', v)
+                                    }
+                                    totalAmount={reservation.total_amount}
+                                    onCopy={copyToClipboard}
+                                />
+                            ) : (
+                                <PaymentMethodCard
+                                    method={venue.payment_methods[0]}
+                                    totalAmount={reservation.total_amount}
+                                    onCopy={copyToClipboard}
+                                />
                             )}
 
                             <Field
                                 label="Reference number (optional)"
                                 htmlFor="reference_number"
                                 error={form.errors.reference_number}
-                                hint="Last digits of the GCash transaction reference, if available."
+                                hint="Last digits of the transaction reference, if available."
                             >
                                 <Input
                                     id="reference_number"
@@ -426,11 +425,12 @@ export default function PublicCheckout({ venue, court, reservation }: Props) {
                                     type="submit"
                                     disabled={
                                         form.processing ||
-                                        !form.data.payment_proof
+                                        !form.data.payment_proof ||
+                                        !hasMethods
                                     }
                                     className={cn(
                                         'group h-12 w-full gap-2 rounded-md text-xs font-medium uppercase tracking-[0.22em] shadow-none disabled:opacity-60',
-                                        form.data.payment_proof
+                                        form.data.payment_proof && hasMethods
                                             ? 'bg-[#3e2817] text-[#faf5ec] hover:bg-[#2a1a0e]'
                                             : 'bg-[#3e2817]/40 text-[#faf5ec]',
                                     )}
@@ -443,14 +443,14 @@ export default function PublicCheckout({ venue, court, reservation }: Props) {
                                     {form.data.payment_proof
                                         ? 'Submit booking'
                                         : 'Upload proof to continue'}
-                                    {form.data.payment_proof && (
+                                    {form.data.payment_proof && hasMethods && (
                                         <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                                     )}
                                 </Button>
 
                                 <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.22em] text-[#5c3a21]/70">
                                     <Lock className="size-3" aria-hidden />
-                                    No login required · Manual GCash
+                                    No login required · Manual payment
                                 </p>
                             </div>
                         </div>
@@ -466,7 +466,7 @@ export default function PublicCheckout({ venue, court, reservation }: Props) {
                                 </p>
                             </div>
                             <ol className="ml-4 list-decimal space-y-1.5 font-serif text-xs text-[#5c3a21]">
-                                <li>Send payment via GCash.</li>
+                                <li>Send payment via GCash or Maya.</li>
                                 <li>Upload the screenshot &amp; submit.</li>
                                 <li>
                                     The venue verifies your payment (usually
@@ -482,6 +482,129 @@ export default function PublicCheckout({ venue, court, reservation }: Props) {
                 </form>
             </div>
         </>
+    );
+}
+
+/* ── Payment method display ─────────────────────────────────────────── */
+
+function PaymentMethodCard({
+    method,
+    totalAmount,
+    onCopy,
+}: {
+    method: PaymentMethod;
+    totalAmount: number;
+    onCopy: (value: string) => void;
+}) {
+    return (
+        <div className="rounded-md border border-[#3e2817]/15 bg-[#faf5ec]/60 p-5">
+            <div className="mb-4 flex items-center gap-2.5">
+                <span className="flex size-9 items-center justify-center rounded-md bg-[#efe6d4] text-[#3e2817]">
+                    <Wallet className="size-4" aria-hidden />
+                </span>
+                <div>
+                    <p className="font-display text-base font-bold text-[#3e2817]">
+                        {method.provider_label}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-[#5c3a21]">
+                        Manual verification
+                    </p>
+                </div>
+            </div>
+
+            <CopyRow
+                label="Account name"
+                value={method.account_name}
+                onCopy={onCopy}
+            />
+            <CopyRow
+                label="Mobile number"
+                value={method.mobile_number}
+                onCopy={onCopy}
+            />
+            <p className="mt-4 border-t border-[#3e2817]/10 pt-3 font-serif text-sm text-[#5c3a21]">
+                Send{' '}
+                <span className="font-display font-bold text-[#3e2817]">
+                    {formatPHP(totalAmount)}
+                </span>{' '}
+                to this account.
+            </p>
+        </div>
+    );
+}
+
+function PaymentMethodTabs({
+    methods,
+    selectedProvider,
+    onSelectProvider,
+    totalAmount,
+    onCopy,
+}: {
+    methods: PaymentMethod[];
+    selectedProvider: string;
+    onSelectProvider: (provider: string) => void;
+    totalAmount: number;
+    onCopy: (value: string) => void;
+}) {
+    const activeProvider =
+        selectedProvider || methods[0]?.provider || '';
+
+    return (
+        <Tabs
+            value={activeProvider}
+            onValueChange={onSelectProvider}
+            className="gap-0"
+        >
+            <TabsList className="mb-4 h-auto gap-1 rounded-md border border-[#3e2817]/15 bg-[#faf5ec] p-1">
+                {methods.map((m) => (
+                    <TabsTrigger
+                        key={m.provider}
+                        value={m.provider}
+                        className="rounded-sm px-4 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-[#5c3a21] data-[state=active]:bg-[#3e2817] data-[state=active]:text-[#faf5ec] data-[state=active]:shadow-none"
+                    >
+                        {m.provider_label}
+                    </TabsTrigger>
+                ))}
+            </TabsList>
+
+            {methods.map((m) => (
+                <TabsContent key={m.provider} value={m.provider}>
+                    <div className="rounded-md border border-[#3e2817]/15 bg-[#faf5ec]/60 p-5">
+                        <div className="mb-4 flex items-center gap-2.5">
+                            <span className="flex size-9 items-center justify-center rounded-md bg-[#efe6d4] text-[#3e2817]">
+                                <Wallet className="size-4" aria-hidden />
+                            </span>
+                            <div>
+                                <p className="font-display text-base font-bold text-[#3e2817]">
+                                    {m.provider_label}
+                                </p>
+                                <p className="text-[10px] uppercase tracking-[0.22em] text-[#5c3a21]">
+                                    Manual verification
+                                </p>
+                            </div>
+                        </div>
+
+                        <CopyRow
+                            label="Account name"
+                            value={m.account_name}
+                            onCopy={onCopy}
+                        />
+                        <CopyRow
+                            label="Mobile number"
+                            value={m.mobile_number}
+                            onCopy={onCopy}
+                        />
+                        <p className="mt-4 border-t border-[#3e2817]/10 pt-3 font-serif text-sm text-[#5c3a21]">
+                            Send{' '}
+                            <span className="font-display font-bold text-[#3e2817]">
+                                {formatPHP(totalAmount)}
+                            </span>{' '}
+                            to this account.
+                        </p>
+                    </div>
+                </TabsContent>
+            ))}
+        </Tabs>
     );
 }
 

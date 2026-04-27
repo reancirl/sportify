@@ -33,6 +33,7 @@ class VenueResource extends JsonResource
             'contact_phone' => $this->contact_phone,
             'contact_email' => $this->contact_email,
             'cover_image_path' => $this->cover_image_path,
+            'payment_methods' => VenuePaymentMethodResource::collection($this->whenLoaded('paymentMethods')),
             'timezone' => $this->timezone,
             'status' => $this->status->value,
             'approved_at' => $this->approved_at?->utc()->toIso8601String(),

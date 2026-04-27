@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
 use App\Enums\SessionPlayerStatus;
 use App\Enums\SessionStatus;
@@ -18,6 +19,7 @@ use App\Models\User;
 use App\Models\Venue;
 use App\Models\VenueImage;
 use App\Models\VenueOperatingHour;
+use App\Models\VenuePaymentMethod;
 use App\Models\VenueStaffMember;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
@@ -45,6 +47,7 @@ class DemoDataSeeder extends Seeder
             $owner = $owners[$i % $owners->count()];
 
             $venue = $this->createApprovedVenue($blueprint, $owner, $superAdmin);
+            $this->seedPaymentMethods($venue, $owner, $i);
             $this->seedOperatingHours($venue, $blueprint);
             $courts = $this->seedCourts($venue, $blueprint);
             $staff = $this->seedStaff($venue, $blueprint, $i);
@@ -320,13 +323,39 @@ class DemoDataSeeder extends Seeder
             'longitude' => $bp['lng'],
             'contact_phone' => $bp['phone'],
             'contact_email' => $bp['email'],
-            'gcash_account_name' => $owner->name,
-            'gcash_mobile_number' => str_replace([' ', '+63 '], ['', '0'], $bp['phone']),
             'cover_image_path' => $bp['cover'],
             'timezone' => 'Asia/Manila',
             'approved_by' => $approver->id,
             'approved_at' => now()->subDays(30),
         ]);
+    }
+
+    /**
+     * Seed GCash (always) plus Maya (for even-indexed venues) payment methods.
+     */
+    private function seedPaymentMethods(Venue $venue, User $owner, int $index): void
+    {
+        // Every approved venue gets a GCash entry using the owner's contact details.
+        VenuePaymentMethod::create([
+            'venue_id' => $venue->id,
+            'provider' => PaymentProvider::Gcash,
+            'account_name' => $owner->name,
+            'mobile_number' => $owner->phone ?? '09000000000',
+            'is_active' => true,
+            'sort_order' => 0,
+        ]);
+
+        // Every other venue also gets a Maya entry for variety.
+        if ($index % 2 === 0) {
+            VenuePaymentMethod::create([
+                'venue_id' => $venue->id,
+                'provider' => PaymentProvider::Maya,
+                'account_name' => $owner->name,
+                'mobile_number' => $owner->phone ?? '09000000000',
+                'is_active' => true,
+                'sort_order' => 1,
+            ]);
+        }
     }
 
     /**

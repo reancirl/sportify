@@ -31,8 +31,6 @@ type VenueFormData = {
 
     contact_phone: string;
     contact_email: string;
-    gcash_account_name: string;
-    gcash_mobile_number: string;
     facebook_url: string;
     instagram_url: string;
     twitter_url: string;
@@ -75,8 +73,6 @@ export function VenueForm({
 
         contact_phone: venue?.contact_phone ?? '',
         contact_email: venue?.contact_email ?? '',
-        gcash_account_name: venue?.gcash_account_name ?? '',
-        gcash_mobile_number: venue?.gcash_mobile_number ?? '',
         facebook_url: venue?.facebook_url ?? '',
         instagram_url: venue?.instagram_url ?? '',
         twitter_url: venue?.twitter_url ?? '',
@@ -343,52 +339,18 @@ export function VenueForm({
                     </Field>
                 </div>
 
-                <div className="rounded-md border border-[#3e2817]/15 bg-[#faf5ec]/40 p-4">
-                    <p className="mb-3 font-display text-sm font-bold tracking-[-0.01em] text-[#3e2817]">
-                        GCash receiving account
+                <div className="rounded-md border border-dashed border-[#3e2817]/20 bg-[#faf5ec]/40 p-4">
+                    <p className="font-display text-sm font-bold tracking-[-0.01em] text-[#3e2817]">
+                        Payment methods
                     </p>
-                    <p className="mb-4 font-serif text-xs text-[#5c3a21]">
-                        Shown on the public checkout page so members know
-                        where to send payment.
+                    <p className="mt-1 font-serif text-xs text-[#5c3a21]">
+                        Configure GCash, Maya, and other receiving accounts
+                        from the dedicated{' '}
+                        <span className="font-medium text-[#3e2817]">
+                            Payment setup
+                        </span>{' '}
+                        tab — accounts there appear on the public checkout.
                     </p>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <Field
-                            label="Account name"
-                            htmlFor="gcash_account_name"
-                            error={form.errors.gcash_account_name}
-                        >
-                            <Input
-                                id="gcash_account_name"
-                                value={form.data.gcash_account_name}
-                                onChange={(e) =>
-                                    form.setData(
-                                        'gcash_account_name',
-                                        e.target.value,
-                                    )
-                                }
-                                placeholder="e.g. Maria Santos"
-                                className={INPUT_CLASS}
-                            />
-                        </Field>
-                        <Field
-                            label="Mobile number"
-                            htmlFor="gcash_mobile_number"
-                            error={form.errors.gcash_mobile_number}
-                        >
-                            <Input
-                                id="gcash_mobile_number"
-                                value={form.data.gcash_mobile_number}
-                                onChange={(e) =>
-                                    form.setData(
-                                        'gcash_mobile_number',
-                                        e.target.value,
-                                    )
-                                }
-                                placeholder="09171234567"
-                                className={INPUT_CLASS}
-                            />
-                        </Field>
-                    </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">

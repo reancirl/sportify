@@ -3,12 +3,14 @@
 namespace Tests\Feature\Public;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
 use App\Models\Booking;
 use App\Models\Court;
 use App\Models\Payment;
 use App\Models\Venue;
 use App\Models\VenueOperatingHour;
+use App\Models\VenuePaymentMethod;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -40,8 +42,15 @@ class GuestCheckoutTest extends TestCase
     {
         $venue = Venue::factory()->approved()->create([
             'timezone' => 'Asia/Manila',
-            'gcash_account_name' => 'Maria Santos',
-            'gcash_mobile_number' => '09171234567',
+        ]);
+
+        VenuePaymentMethod::factory()->create([
+            'venue_id' => $venue->id,
+            'provider' => PaymentProvider::Gcash,
+            'account_name' => 'Maria Santos',
+            'mobile_number' => '09171234567',
+            'is_active' => true,
+            'sort_order' => 0,
         ]);
 
         for ($day = 0; $day < 7; $day++) {
@@ -79,8 +88,9 @@ class GuestCheckoutTest extends TestCase
             ->where('reservation.slot_count', 2)
             ->where('reservation.hours', 2)
             ->where('reservation.total_amount', 700)
-            ->where('venue.gcash_account_name', 'Maria Santos')
-            ->where('venue.gcash_mobile_number', '09171234567')
+            ->where('venue.payment_methods.0.provider', 'gcash')
+            ->where('venue.payment_methods.0.account_name', 'Maria Santos')
+            ->where('venue.payment_methods.0.mobile_number', '09171234567')
         );
     }
 

@@ -61,10 +61,20 @@ class CheckoutController extends Controller
                 'city' => $venue->city,
                 'province' => $venue->province,
                 'timezone' => $tz,
-                'gcash_account_name' => $venue->gcash_account_name,
-                'gcash_mobile_number' => $venue->gcash_mobile_number,
                 'contact_email' => $venue->contact_email,
                 'contact_phone' => $venue->contact_phone,
+                'payment_methods' => $venue->paymentMethods()
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->get()
+                    ->map(fn ($m) => [
+                        'id' => $m->id,
+                        'provider' => $m->provider->value,
+                        'provider_label' => $m->provider->label(),
+                        'account_name' => $m->account_name,
+                        'mobile_number' => $m->mobile_number,
+                    ])
+                    ->values(),
             ],
             'court' => [
                 'id' => $court->id,

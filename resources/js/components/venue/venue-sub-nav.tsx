@@ -8,6 +8,7 @@ import {
     Receipt,
     Users,
     UsersRound,
+    Wallet,
 } from 'lucide-react';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { cn } from '@/lib/utils';
@@ -69,6 +70,11 @@ export function VenueSubNav({ venue }: Props) {
             href: `/venue-admin/venues/${venue.id}/payments`,
             label: 'Payments',
             icon: Receipt,
+        },
+        {
+            href: `/venue-admin/venues/${venue.id}/payment-methods`,
+            label: 'Payment setup',
+            icon: Wallet,
         },
         {
             href: `/venue-admin/venues/${venue.id}/staff`,

@@ -7,10 +7,12 @@ use App\Models\Court;
 use App\Models\OpenPlaySession;
 use App\Models\Payment;
 use App\Models\Venue;
+use App\Models\VenuePaymentMethod;
 use App\Policies\BookingPolicy;
 use App\Policies\CourtPolicy;
 use App\Policies\OpenPlaySessionPolicy;
 use App\Policies\PaymentPolicy;
+use App\Policies\VenuePaymentMethodPolicy;
 use App\Policies\VenuePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
@@ -24,6 +26,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Venue::class => VenuePolicy::class,
+        VenuePaymentMethod::class => VenuePaymentMethodPolicy::class,
         Court::class => CourtPolicy::class,
         Booking::class => BookingPolicy::class,
         OpenPlaySession::class => OpenPlaySessionPolicy::class,

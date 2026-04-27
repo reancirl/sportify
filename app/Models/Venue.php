@@ -37,8 +37,6 @@ class Venue extends Model
         'longitude',
         'contact_phone',
         'contact_email',
-        'gcash_account_name',
-        'gcash_mobile_number',
         'facebook_url',
         'instagram_url',
         'twitter_url',
@@ -133,6 +131,28 @@ class Venue extends Model
     public function sessions(): HasMany
     {
         return $this->hasMany(OpenPlaySession::class);
+    }
+
+    /**
+     * All payment methods for this venue, ordered by sort_order ascending.
+     *
+     * @return HasMany<VenuePaymentMethod, $this>
+     */
+    public function paymentMethods(): HasMany
+    {
+        return $this->hasMany(VenuePaymentMethod::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Convenience query for the active payment methods on this venue.
+     *
+     * @return HasMany<VenuePaymentMethod, $this>
+     */
+    public function activePaymentMethods(): HasMany
+    {
+        return $this->hasMany(VenuePaymentMethod::class)
+            ->where('is_active', true)
+            ->orderBy('sort_order');
     }
 
     public function scopeApproved(Builder $query): Builder

@@ -47,8 +47,6 @@ class UpdateVenueRequest extends FormRequest
             // Contact
             'contact_phone' => ['nullable', 'string', 'max:32'],
             'contact_email' => ['nullable', 'email', 'max:120'],
-            'gcash_account_name' => ['nullable', 'string', 'max:120'],
-            'gcash_mobile_number' => ['nullable', 'string', 'max:20'],
             'facebook_url' => ['nullable', 'url', 'max:255'],
             'instagram_url' => ['nullable', 'url', 'max:255'],
             'twitter_url' => ['nullable', 'url', 'max:255'],
