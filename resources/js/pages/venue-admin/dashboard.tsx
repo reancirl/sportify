@@ -163,7 +163,7 @@ function EmptyState() {
             </p>
             <Link
                 href="/venue-admin/venues/create"
-                className="mt-2 inline-flex items-center gap-2 bg-[#3e2817] px-7 py-3 text-xs font-medium uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-[#2a1a0e]"
+                className="mt-2 inline-flex items-center gap-2 bg-[#3e2817] px-7 py-3 text-xs font-medium uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-chocolate-deep"
             >
                 Create a venue
                 <ArrowRight className="size-3.5" aria-hidden />

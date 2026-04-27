@@ -21,6 +21,8 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as venuesIndex } from '@/routes/venues';
+import { index as venueAdminIndex } from '@/routes/venue-admin/venues';
 import type { NavItem, Role, User } from '@/types';
 
 type SidebarSection = {
@@ -44,7 +46,7 @@ function buildSections(user: User | null): SidebarSection[] {
         label: 'Overview',
         items: [
             { title: 'Dashboard', href: dashboard().url, icon: LayoutGrid },
-            { title: 'Browse venues', href: '/venues', icon: MapPinned },
+            { title: 'Browse venues', href: venuesIndex().url, icon: MapPinned },
         ],
     });
 
@@ -66,7 +68,7 @@ function buildSections(user: User | null): SidebarSection[] {
             items: [
                 {
                     title: 'My venues',
-                    href: '/venue-admin/venues',
+                    href: venueAdminIndex().url,
                     icon: MapPinned,
                 },
             ],
@@ -92,7 +94,7 @@ function buildSections(user: User | null): SidebarSection[] {
 
 export function AppSidebar() {
     const { auth } = usePage().props;
-    const user = (auth as { user: User | null }).user;
+    const user = auth.user;
 
     const sections = useMemo(() => buildSections(user), [user]);
 

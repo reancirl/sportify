@@ -376,7 +376,7 @@ export function VenueForm({
             <Button
                 type="submit"
                 disabled={form.processing}
-                className="h-10 gap-2 rounded-md bg-[#3e2817] px-6 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] shadow-none hover:bg-[#2a1a0e] disabled:opacity-60"
+                className="h-10 gap-2 rounded-md bg-[#3e2817] px-6 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] shadow-none hover:bg-chocolate-deep disabled:opacity-60"
             >
                 {form.processing && <Spinner />}
                 {submitLabel}

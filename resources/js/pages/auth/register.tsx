@@ -99,7 +99,7 @@ export default function Register() {
                             tabIndex={5}
                             disabled={processing}
                             data-test="register-user-button"
-                            className="group inline-flex h-auto w-full items-center justify-center gap-2 bg-[#3e2817] px-7 py-4 text-xs font-medium uppercase tracking-[0.24em] text-[#faf5ec] transition hover:bg-[#2a1a0e] disabled:opacity-60"
+                            className="group inline-flex h-auto w-full items-center justify-center gap-2 bg-[#3e2817] px-7 py-4 text-xs font-medium uppercase tracking-[0.24em] text-[#faf5ec] transition hover:bg-chocolate-deep disabled:opacity-60"
                         >
                             {processing ? (
                                 <Spinner />

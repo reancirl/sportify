@@ -1,7 +1,10 @@
 import { useGSAP } from '@gsap/react';
 import { createInertiaApp } from '@inertiajs/react';
 import gsap from 'gsap';
+import { DrawSVGPlugin } from 'gsap/DrawSVGPlugin';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { SplitText } from 'gsap/SplitText';
+import { PageLoader } from '@/components/ui/page-loader';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
@@ -10,7 +13,7 @@ import AuthLayout from '@/layouts/auth-layout';
 import PublicLayout from '@/layouts/public-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
+gsap.registerPlugin(useGSAP, ScrollTrigger, DrawSVGPlugin, SplitText);
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -34,14 +37,13 @@ createInertiaApp({
     withApp(app) {
         return (
             <TooltipProvider delayDuration={0}>
+                <PageLoader />
                 {app}
                 <Toaster />
             </TooltipProvider>
         );
     },
-    progress: {
-        color: '#4B5563',
-    },
+    progress: false,
 });
 
 // This will set light / dark mode on load...

@@ -1,5 +1,6 @@
 export type * from './auth';
 export type * from './navigation';
+export type * from './sportify';
 export type * from './ui';
 
 // Backend API contract types — exported under a namespace to avoid clashing

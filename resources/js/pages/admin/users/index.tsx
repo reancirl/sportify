@@ -90,7 +90,7 @@ export default function AdminUsersIndex({ users, filters }: Props) {
                     </div>
                     <Button
                         type="submit"
-                        className="h-9 rounded-md bg-[#3e2817] px-5 text-xs font-medium uppercase tracking-[0.18em] text-[#faf5ec] shadow-none hover:bg-[#2a1a0e]"
+                        className="h-9 rounded-md bg-[#3e2817] px-5 text-xs font-medium uppercase tracking-[0.18em] text-[#faf5ec] shadow-none hover:bg-chocolate-deep"
                     >
                         Search
                     </Button>

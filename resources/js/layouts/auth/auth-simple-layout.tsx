@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/types';
@@ -8,10 +8,13 @@ export default function AuthSimpleLayout({
     title,
     description,
 }: AuthLayoutProps) {
+    const { sportify } = usePage().props;
+    const { sports, region } = sportify;
+
     return (
-        <div className="grid min-h-svh w-full bg-[#faf5ec] lg:grid-cols-[1.05fr_1fr]">
+        <div className="grid min-h-svh w-full bg-cream lg:grid-cols-[1.05fr_1fr]">
             {/* — — — Brand panel (left) — — — */}
-            <aside className="relative hidden overflow-hidden bg-[#3e2817] text-[#faf5ec] lg:flex lg:flex-col lg:justify-between lg:p-14">
+            <aside className="relative hidden overflow-hidden bg-chocolate text-cream lg:flex lg:flex-col lg:justify-between lg:p-14">
                 <BrandOrnament />
 
                 <Link
@@ -23,28 +26,28 @@ export default function AuthSimpleLayout({
                 </Link>
 
                 <div className="relative z-10 max-w-md space-y-8">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.32em] text-[#faf5ec]/65">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.32em] text-cream/65">
                         Members access
                     </p>
                     <p className="font-display text-[clamp(2rem,3.4vw,3rem)] font-bold leading-[1.1] tracking-[-0.02em]">
-                        “The most luxurious thing we offer is the absence of{' '}
-                        <span className="italic text-[#f37021]">
+                        "The most luxurious thing we offer is the absence of{' '}
+                        <span className="italic text-hermes">
                             friction
                         </span>
-                        .”
+                        ."
                     </p>
-                    <p className="font-serif text-base leading-relaxed text-[#faf5ec]/75">
+                    <p className="font-serif text-base leading-relaxed text-cream/75">
                         Reserve premium courts. Discover open play. Meet
-                        players who take the game seriously — across Iligan
-                        City and beyond.
+                        players who take the game seriously — across{' '}
+                        {region.city} and beyond.
                     </p>
                 </div>
 
-                <div className="relative z-10 flex items-end justify-between gap-6 text-[10px] uppercase tracking-[0.28em] text-[#faf5ec]/55">
-                    <span>Tennis · Pickleball · Badminton</span>
+                <div className="relative z-10 flex items-end justify-between gap-6 text-[10px] uppercase tracking-[0.28em] text-cream/55">
+                    <span>{sports.map((s) => s.name).join(' · ')}</span>
                     <span>
                         sportify
-                        <span className="italic text-[#f37021]">.ph</span>
+                        <span className="italic text-hermes">.ph</span>
                     </span>
                 </div>
             </aside>
@@ -54,7 +57,7 @@ export default function AuthSimpleLayout({
                 <div className="flex items-center justify-between">
                     <Link
                         href={home().url}
-                        className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#5c3a21] transition hover:text-[#f37021] lg:hidden"
+                        className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.28em] text-chocolate-soft transition hover:text-hermes lg:hidden"
                         aria-label="sportify.ph home"
                     >
                         <img
@@ -66,7 +69,7 @@ export default function AuthSimpleLayout({
                     </Link>
                     <Link
                         href={home().url}
-                        className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-[#5c3a21] transition hover:text-[#f37021]"
+                        className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-chocolate-soft transition hover:text-hermes"
                     >
                         <ArrowLeft className="size-3" aria-hidden />
                         Back to site
@@ -76,15 +79,15 @@ export default function AuthSimpleLayout({
                 <div className="flex flex-1 items-center justify-center">
                     <div className="w-full max-w-md">
                         <header className="mb-10 space-y-3">
-                            <p className="text-[10px] font-medium uppercase tracking-[0.32em] text-[#5c3a21]">
+                            <p className="text-[10px] font-medium uppercase tracking-[0.32em] text-chocolate-soft">
                                 Members access
                             </p>
-                            <h1 className="font-display text-[clamp(1.9rem,3vw,2.6rem)] font-bold leading-[1.1] tracking-[-0.02em] text-[#3e2817]">
+                            <h1 className="font-display text-[clamp(1.9rem,3vw,2.6rem)] font-bold leading-[1.1] tracking-[-0.02em] text-chocolate">
                                 {title}
-                                <span className="text-[#f37021]">.</span>
+                                <span className="text-hermes">.</span>
                             </h1>
                             {description && (
-                                <p className="font-serif text-base leading-relaxed text-[#5c3a21]">
+                                <p className="font-serif text-base leading-relaxed text-chocolate-soft">
                                     {description}
                                 </p>
                             )}
@@ -94,10 +97,10 @@ export default function AuthSimpleLayout({
                     </div>
                 </div>
 
-                <p className="mt-10 text-[10px] uppercase tracking-[0.22em] text-[#5c3a21]/70">
+                <p className="mt-10 text-[10px] uppercase tracking-[0.22em] text-chocolate-soft/70">
                     &copy; {new Date().getFullYear()} sportify
-                    <span className="italic text-[#f37021]">.ph</span> ·
-                    Iligan City, Philippines
+                    <span className="italic text-hermes">.ph</span> ·
+                    {region.city}, {region.country}
                 </p>
             </main>
         </div>

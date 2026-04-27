@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     ArrowRight,
@@ -83,6 +83,9 @@ export default function VenueAdminVenuesCreate({
     amenities,
     surfaceTypes,
 }: Props) {
+    const { sportify } = usePage().props;
+    const { region } = sportify;
+
     const form = useForm<WizardData>({
         name: '',
         description: '',
@@ -91,7 +94,7 @@ export default function VenueAdminVenuesCreate({
 
         address_line: '',
         barangay: '',
-        city: 'Iligan City',
+        city: region.city,
         province: 'Lanao del Norte',
         region: 'Northern Mindanao',
         postal_code: '',
@@ -309,6 +312,12 @@ function BasicInfoStep({
     onChange,
     amenityOptions,
 }: StepProps & { amenityOptions: Option[] }) {
+    const { sportify } = usePage().props;
+    const { region } = sportify;
+    const venuePlaceholder = region.sample_areas[0]
+        ? `${region.sample_areas[0]} Sports Club`
+        : 'Court Club';
+
     const toggleAmenity = (value: string) => {
         const next = data.amenities.includes(value)
             ? data.amenities.filter((a) => a !== value)
@@ -328,7 +337,7 @@ function BasicInfoStep({
                     id="name"
                     value={data.name}
                     onChange={(e) => onChange('name', e.target.value)}
-                    placeholder="e.g. Pala-o Pickleball Club"
+                    placeholder={`e.g. ${venuePlaceholder}`}
                     className={INPUT_CLASS}
                 />
             </Field>
@@ -420,6 +429,11 @@ function BasicInfoStep({
 /* ── Step: Location ─────────────────────────────────────────────────── */
 
 function LocationStep({ data, errors, onChange }: StepProps) {
+    const { sportify } = usePage().props;
+    const sampleAreaPlaceholder = sportify.region.sample_areas[0]
+        ? `e.g. ${sportify.region.sample_areas[0]}`
+        : 'e.g. Barangay';
+
     return (
         <div className="space-y-8">
             <SectionTitle title="Location" subtitle="Address and area" />
@@ -449,7 +463,7 @@ function LocationStep({ data, errors, onChange }: StepProps) {
                     id="barangay"
                     value={data.barangay}
                     onChange={(e) => onChange('barangay', e.target.value)}
-                    placeholder="e.g. Pala-o"
+                    placeholder={sampleAreaPlaceholder}
                     className={INPUT_CLASS}
                 />
             </Field>
@@ -1055,7 +1069,7 @@ function Footer({
                     type="button"
                     onClick={onSubmit}
                     disabled={processing}
-                    className="h-10 gap-2 rounded-md bg-[#3e2817] px-6 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] shadow-none hover:bg-[#2a1a0e] disabled:opacity-60"
+                    className="h-10 gap-2 rounded-md bg-[#3e2817] px-6 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] shadow-none hover:bg-chocolate-deep disabled:opacity-60"
                 >
                     {processing ? <Spinner /> : <Check className="size-3.5" />}
                     Submit for approval
@@ -1064,7 +1078,7 @@ function Footer({
                 <Button
                     type="button"
                     onClick={onNext}
-                    className="h-10 gap-2 rounded-md bg-[#3e2817] px-6 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] shadow-none hover:bg-[#2a1a0e]"
+                    className="h-10 gap-2 rounded-md bg-[#3e2817] px-6 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] shadow-none hover:bg-chocolate-deep"
                 >
                     Next
                     <ArrowRight className="size-3.5" aria-hidden />

@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { cn, formatInManila, formatPHP } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import { index as bookingsIndex } from '@/routes/player/bookings';
+import { index as sessionsIndex } from '@/routes/player/sessions';
+import { index as venuesIndex } from '@/routes/venues';
 import type { Models } from '@/types';
 
 type Stats = {
@@ -141,7 +144,7 @@ function UpcomingBookingsPanel({
                     Your next reservations
                 </p>
                 <Link
-                    href="/bookings"
+                    href={bookingsIndex().url}
                     className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-[#3e2817] transition hover:text-[#f37021]"
                 >
                     View all
@@ -154,8 +157,8 @@ function UpcomingBookingsPanel({
                         No upcoming bookings yet.
                     </p>
                     <Link
-                        href="/venues"
-                        className="inline-flex items-center gap-2 bg-[#3e2817] px-6 py-2.5 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-[#2a1a0e]"
+                        href={venuesIndex().url}
+                        className="inline-flex items-center gap-2 bg-[#3e2817] px-6 py-2.5 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-chocolate-deep"
                     >
                         Find a court
                         <ArrowRight className="size-3" aria-hidden />
@@ -210,20 +213,20 @@ function QuickActionsPanel() {
             <ActionCard
                 icon={Search}
                 title="Find a court"
-                copy="Browse curated venues across Iligan and reserve in seconds."
-                href="/venues"
+                copy="Browse curated venues and reserve in seconds."
+                href={venuesIndex().url}
             />
             <ActionCard
                 icon={UsersRound}
                 title="Open play sessions"
                 copy="Drop into sessions matched to your level."
-                href="/sessions"
+                href={sessionsIndex().url}
             />
             <ActionCard
                 icon={CalendarRange}
                 title="My bookings"
                 copy="Review payments, court details, and history."
-                href="/bookings"
+                href={bookingsIndex().url}
             />
             <div className="flex items-center justify-between border border-[#3e2817]/15 bg-[#3e2817] px-5 py-4 text-[#faf5ec]">
                 <div className="flex items-center gap-3">

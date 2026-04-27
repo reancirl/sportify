@@ -40,7 +40,7 @@
                 justify-content: center;
                 gap: 2.25rem;
                 background: #faf5ec;
-                font-family: Georgia, 'Cormorant Garamond', 'Times New Roman', serif;
+                font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
                 color: #3e2817;
                 opacity: 1;
                 visibility: visible;
@@ -149,12 +149,13 @@
             }
 
             .sl-wordmark {
-                font-family: Georgia, 'Cormorant Garamond', serif;
+                font-family: 'Fraunces', Georgia, serif;
                 font-size: 1.75rem;
                 font-weight: 700;
                 letter-spacing: -0.02em;
                 line-height: 1;
                 margin: 0;
+                font-variation-settings: 'opsz' 144, 'SOFT' 50;
             }
 
             .sl-wordmark .sl-tld {
@@ -167,7 +168,7 @@
             .sl-tagline {
                 margin: 0;
                 font-family:
-                    'Inter', ui-sans-serif, system-ui, sans-serif;
+                    'Geist', ui-sans-serif, system-ui, sans-serif;
                 font-size: 0.65rem;
                 font-weight: 500;
                 letter-spacing: 0.32em;
@@ -201,7 +202,7 @@
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=cormorant-garamond:400,500,600,700|inter:400,500,600|lora:400,500,600|instrument-sans:400,500,600" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=fraunces:400,500,600,700,800,900|newsreader:300,400,500,600,700|geist:400,500,600,700" rel="stylesheet" />
 
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])

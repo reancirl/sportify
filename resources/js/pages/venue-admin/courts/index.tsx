@@ -430,7 +430,7 @@ function AddCourtPanel({
                 <Button
                     type="submit"
                     disabled={form.processing}
-                    className="h-9 gap-2 rounded-md bg-[#3e2817] px-5 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] shadow-none hover:bg-[#2a1a0e] disabled:opacity-60"
+                    className="h-9 gap-2 rounded-md bg-[#3e2817] px-5 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] shadow-none hover:bg-chocolate-deep disabled:opacity-60"
                 >
                     {form.processing ? <Spinner /> : <Plus className="size-3.5" />}
                     Add court
@@ -617,7 +617,7 @@ function EditCourtDialog({
                         <Button
                             type="submit"
                             disabled={form.processing}
-                            className="h-9 gap-1.5 rounded-md bg-[#3e2817] px-4 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] shadow-none hover:bg-[#2a1a0e] disabled:opacity-60"
+                            className="h-9 gap-1.5 rounded-md bg-[#3e2817] px-4 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] shadow-none hover:bg-chocolate-deep disabled:opacity-60"
                         >
                             {form.processing && <Spinner />}
                             Save changes

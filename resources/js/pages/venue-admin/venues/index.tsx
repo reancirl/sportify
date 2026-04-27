@@ -63,7 +63,7 @@ export default function VenueAdminVenuesIndex({ venues }: Props) {
 
                     <Link
                         href="/venue-admin/venues/create"
-                        className="inline-flex items-center gap-2 self-start bg-[#3e2817] px-6 py-3 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-[#2a1a0e]"
+                        className="inline-flex items-center gap-2 self-start bg-[#3e2817] px-6 py-3 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-chocolate-deep"
                     >
                         <Plus className="size-3.5" aria-hidden />
                         Add venue
@@ -101,7 +101,7 @@ function EmptyState() {
             </p>
             <Link
                 href="/venue-admin/venues/create"
-                className="mt-2 inline-flex items-center gap-2 bg-[#3e2817] px-7 py-3 text-xs font-medium uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-[#2a1a0e]"
+                className="mt-2 inline-flex items-center gap-2 bg-[#3e2817] px-7 py-3 text-xs font-medium uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-chocolate-deep"
             >
                 Create a venue
                 <ArrowRight className="size-3.5" aria-hidden />
@@ -170,7 +170,7 @@ function VenueCard({ venue }: { venue: VenueWithCounts }) {
                 <div className="mt-auto flex flex-col gap-2 border-t border-[#3e2817]/10 pt-4">
                     <Link
                         href={`/venue-admin/venues/${venue.id}/edit`}
-                        className="inline-flex items-center justify-center gap-2 bg-[#3e2817] px-4 py-2.5 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-[#2a1a0e]"
+                        className="inline-flex items-center justify-center gap-2 bg-[#3e2817] px-4 py-2.5 text-[10px] font-medium uppercase tracking-[0.22em] text-[#faf5ec] transition hover:bg-chocolate-deep"
                     >
                         Manage venue
                         <ArrowRight className="size-3" aria-hidden />
