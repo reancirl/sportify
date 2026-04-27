@@ -7,10 +7,12 @@ use App\Http\Controllers\Player\BookingController as PlayerBookingController;
 use App\Http\Controllers\Player\PaymentProofController;
 use App\Http\Controllers\Player\SessionController as PlayerSessionController;
 use App\Http\Controllers\Player\SessionJoinController;
+use App\Http\Controllers\Public\CheckoutController;
 use App\Http\Controllers\Public\VenueController as PublicVenueController;
 use App\Http\Controllers\VenueAdmin\BookingController as VenueAdminBookingController;
 use App\Http\Controllers\VenueAdmin\CourtController as VenueAdminCourtController;
 use App\Http\Controllers\VenueAdmin\PaymentController as VenueAdminPaymentController;
+use App\Http\Controllers\VenueAdmin\PaymentMethodController as VenueAdminPaymentMethodController;
 use App\Http\Controllers\VenueAdmin\SessionController as VenueAdminSessionController;
 use App\Http\Controllers\VenueAdmin\StaffController;
 use App\Http\Controllers\VenueAdmin\VenueController as VenueAdminVenueController;
@@ -20,6 +22,15 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PublicVenueController::class, 'landing'])->name('home');
 Route::get('venues', [PublicVenueController::class, 'index'])->name('venues.index');
 Route::get('venues/{venue:slug}', [PublicVenueController::class, 'show'])->name('venues.show');
+
+// Public guest checkout — no auth required.
+Route::get('checkout', [CheckoutController::class, 'show'])
+    ->name('checkout.show');
+Route::post('checkout', [CheckoutController::class, 'store'])
+    ->name('checkout.store');
+Route::get('checkout/success/{booking}', [CheckoutController::class, 'success'])
+    ->whereUuid('booking')
+    ->name('checkout.success');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
@@ -90,6 +101,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('payments/{payment}/reject', [VenueAdminPaymentController::class, 'reject'])
                     ->whereUuid('payment')
                     ->name('payments.reject');
+
+                Route::get('payment-methods', [VenueAdminPaymentMethodController::class, 'index'])
+                    ->name('payment-methods.index');
+                Route::post('payment-methods', [VenueAdminPaymentMethodController::class, 'store'])
+                    ->name('payment-methods.store');
+                Route::patch('payment-methods/{paymentMethod}', [VenueAdminPaymentMethodController::class, 'update'])
+                    ->whereUuid('paymentMethod')
+                    ->name('payment-methods.update');
+                Route::delete('payment-methods/{paymentMethod}', [VenueAdminPaymentMethodController::class, 'destroy'])
+                    ->whereUuid('paymentMethod')
+                    ->name('payment-methods.destroy');
 
                 Route::get('staff', [StaffController::class, 'index'])->name('staff.index');
                 Route::post('staff', [StaffController::class, 'store'])->name('staff.store');

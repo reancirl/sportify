@@ -133,6 +133,28 @@ class Venue extends Model
         return $this->hasMany(OpenPlaySession::class);
     }
 
+    /**
+     * All payment methods for this venue, ordered by sort_order ascending.
+     *
+     * @return HasMany<VenuePaymentMethod, $this>
+     */
+    public function paymentMethods(): HasMany
+    {
+        return $this->hasMany(VenuePaymentMethod::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Convenience query for the active payment methods on this venue.
+     *
+     * @return HasMany<VenuePaymentMethod, $this>
+     */
+    public function activePaymentMethods(): HasMany
+    {
+        return $this->hasMany(VenuePaymentMethod::class)
+            ->where('is_active', true)
+            ->orderBy('sort_order');
+    }
+
     public function scopeApproved(Builder $query): Builder
     {
         return $query->where('status', VenueStatus::Approved);

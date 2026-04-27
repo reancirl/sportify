@@ -114,6 +114,48 @@ class CreateBookingTest extends TestCase
         $this->service->createBooking($userB, $court, $startsAt);
     }
 
+    public function test_creates_a_multi_slot_booking_with_extended_duration_and_total(): void
+    {
+        $user = User::factory()->create();
+        $court = $this->makeCourt(400, 60);
+        $startsAt = CarbonImmutable::parse('2026-05-05 09:00:00', 'Asia/Manila');
+
+        $booking = $this->service->createBooking($user, $court, $startsAt, 3);
+
+        // 3 × ₱400 = ₱1,200
+        $this->assertSame('1200.00', (string) $booking->total_amount);
+
+        $this->assertSame(
+            $startsAt->utc()->format('Y-m-d H:i:s'),
+            $booking->starts_at->format('Y-m-d H:i:s'),
+        );
+
+        $this->assertSame(
+            $startsAt->copy()->addHours(3)->utc()->format('Y-m-d H:i:s'),
+            $booking->ends_at->format('Y-m-d H:i:s'),
+        );
+    }
+
+    public function test_multi_slot_booking_fails_if_one_inner_slot_is_taken(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $court = $this->makeCourt(400, 60);
+        $startsAt = CarbonImmutable::parse('2026-05-05 09:00:00', 'Asia/Manila');
+
+        // Block the middle slot only — first and third would otherwise be free.
+        Booking::factory()->confirmed()->create([
+            'user_id' => $other->id,
+            'court_id' => $court->id,
+            'starts_at' => $startsAt->copy()->addHour()->utc(),
+            'ends_at' => $startsAt->copy()->addHours(2)->utc(),
+        ]);
+
+        $this->expectException(SlotUnavailableException::class);
+
+        $this->service->createBooking($user, $court, $startsAt, 3);
+    }
+
     public function test_throws_slot_unavailable_when_court_is_in_a_session_window(): void
     {
         $user = User::factory()->create();

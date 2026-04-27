@@ -45,6 +45,8 @@ export type VenueStaffRole = 'owner' | 'manager' | 'staff';
 
 export type MatchWinner = 'team_a' | 'team_b' | 'draw';
 
+export type PaymentProvider = 'gcash' | 'maya';
+
 // -----------------------------------------------------------------------------
 // Models
 // -----------------------------------------------------------------------------
@@ -86,6 +88,20 @@ export interface VenueStaffMember {
     user?: User;
 }
 
+export interface VenuePaymentMethod {
+    id: string;
+    venue_id: string;
+    provider: PaymentProvider;
+    provider_label: string;
+    account_name: string;
+    mobile_number: string;
+    qr_code_path: string | null;
+    is_active: boolean;
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface Venue {
     id: string;
     owner_id: number;
@@ -124,6 +140,7 @@ export interface Venue {
     images?: VenueImage[];
     operating_hours?: VenueOperatingHour[];
     staff_members?: VenueStaffMember[];
+    payment_methods?: VenuePaymentMethod[];
 }
 
 export type CourtSurfaceType =

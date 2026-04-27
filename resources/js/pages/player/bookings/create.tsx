@@ -1,4 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
+import { useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { TimeSlotPicker } from '@/components/booking/time-slot-picker';
 import Heading from '@/components/heading';
@@ -15,13 +16,15 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
-import { formatPHP } from '@/lib/utils';
+import { formatInManila, formatPHP } from '@/lib/utils';
 import type { Models } from '@/types';
 
 type Selected = {
-    venue_id?: string;
-    court_id?: string;
-    date?: string;
+    venue_id?: string | null;
+    court_id?: string | null;
+    date?: string | null;
+    starts_at?: string | null;
+    slot_count?: number;
 };
 
 type Props = {
@@ -34,6 +37,7 @@ type Props = {
 type BookingForm = {
     court_id: string;
     starts_at: string;
+    slot_count: number;
     notes: string;
 };
 
@@ -45,9 +49,34 @@ export default function PlayerBookingsCreate({
 }: Props) {
     const form = useForm<BookingForm>({
         court_id: court?.id ?? '',
-        starts_at: '',
+        starts_at: selected.starts_at ?? '',
+        slot_count: selected.slot_count ?? 1,
         notes: '',
     });
+
+    // Keep form values in sync if the user navigates back/forward through
+    // /bookings/create with different deep-link query params.
+    useEffect(() => {
+        if (selected.starts_at && form.data.starts_at !== selected.starts_at) {
+            form.setData('starts_at', selected.starts_at);
+        }
+
+        if (selected.slot_count && form.data.slot_count !== selected.slot_count) {
+            form.setData('slot_count', selected.slot_count);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selected.starts_at, selected.slot_count]);
+
+    const slotMinutes = court?.slot_minutes ?? 60;
+    const totalMinutes = slotMinutes * form.data.slot_count;
+    const totalHours = totalMinutes / 60;
+    const hourlyRate = court ? parseFloat(court.hourly_rate) : 0;
+    const totalAmount = hourlyRate * totalHours;
+    const endsAtIso = form.data.starts_at
+        ? new Date(
+              new Date(form.data.starts_at).getTime() + totalMinutes * 60_000,
+          ).toISOString()
+        : '';
 
     const handleVenueChange = (venueId: string) => {
         router.get(
@@ -189,6 +218,81 @@ export default function PlayerBookingsCreate({
                                     value={court.id}
                                     onChange={() => form.setData('court_id', court.id)}
                                 />
+
+                                <dl className="grid gap-2 rounded-md border border-[#3e2817]/15 bg-[#faf5ec]/60 p-4 text-sm sm:grid-cols-2">
+                                    <SummaryRow
+                                        label="Court"
+                                        value={court.name}
+                                    />
+                                    <SummaryRow
+                                        label="Duration"
+                                        value={`${totalHours} ${totalHours === 1 ? 'hour' : 'hours'} · ${form.data.slot_count} ${form.data.slot_count === 1 ? 'slot' : 'slots'}`}
+                                    />
+                                    <SummaryRow
+                                        label="Starts"
+                                        value={formatInManila(
+                                            form.data.starts_at,
+                                            'PPp',
+                                        )}
+                                    />
+                                    <SummaryRow
+                                        label="Ends"
+                                        value={
+                                            endsAtIso
+                                                ? formatInManila(endsAtIso, 'p')
+                                                : '—'
+                                        }
+                                    />
+                                    <SummaryRow
+                                        label="Total"
+                                        value={formatPHP(totalAmount)}
+                                        accent
+                                    />
+                                </dl>
+
+                                <div className="grid gap-2">
+                                    <Label
+                                        htmlFor="booking-slot-count"
+                                        className="text-xs"
+                                    >
+                                        Adjust duration
+                                    </Label>
+                                    <Select
+                                        value={form.data.slot_count.toString()}
+                                        onValueChange={(v) =>
+                                            form.setData(
+                                                'slot_count',
+                                                parseInt(v, 10),
+                                            )
+                                        }
+                                    >
+                                        <SelectTrigger
+                                            id="booking-slot-count"
+                                            className="w-44"
+                                        >
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                                                <SelectItem
+                                                    key={n}
+                                                    value={n.toString()}
+                                                >
+                                                    {n}{' '}
+                                                    {n === 1 ? 'slot' : 'slots'}{' '}
+                                                    (
+                                                    {(
+                                                        (n * slotMinutes) /
+                                                        60
+                                                    ).toString()}
+                                                    h)
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={form.errors.slot_count} />
+                                </div>
+
                                 <div className="grid gap-2">
                                     <Label htmlFor="booking-notes">Notes (optional)</Label>
                                     <Textarea
@@ -211,5 +315,32 @@ export default function PlayerBookingsCreate({
                 )}
             </div>
         </>
+    );
+}
+
+function SummaryRow({
+    label,
+    value,
+    accent,
+}: {
+    label: string;
+    value: string;
+    accent?: boolean;
+}) {
+    return (
+        <div className="flex flex-col gap-0.5">
+            <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#5c3a21]">
+                {label}
+            </dt>
+            <dd
+                className={
+                    accent
+                        ? 'font-display text-base font-bold text-[#3e2817]'
+                        : 'text-sm text-[#3e2817]'
+                }
+            >
+                {value}
+            </dd>
+        </div>
     );
 }

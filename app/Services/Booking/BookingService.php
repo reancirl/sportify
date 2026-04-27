@@ -137,15 +137,34 @@ class BookingService
 
     /**
      * Create a pending_payment booking for the given court starting at $startsAt.
+     * $slotCount controls the duration: 1 = one court slot, 4 = four consecutive
+     * slots stitched into a single booking.
+     *
+     * Pass $guest = ['name' => ..., 'email' => ..., 'phone' => ...] for a guest
+     * checkout (when $user is null). Either $user or $guest is required.
+     *
+     * @param  array{name?: string, email?: string, phone?: ?string}|null  $guest
      *
      * @throws SlotUnavailableException
      */
-    public function createBooking(User $user, Court $court, CarbonInterface $startsAt): Booking
-    {
+    public function createBooking(
+        ?User $user,
+        Court $court,
+        CarbonInterface $startsAt,
+        int $slotCount = 1,
+        ?array $guest = null,
+    ): Booking {
+        if ($user === null && ($guest === null || empty($guest['email']))) {
+            throw new \InvalidArgumentException(
+                'createBooking requires either an authenticated user or guest contact details.'
+            );
+        }
+
         $startsAtUtc = CarbonImmutable::parse($startsAt)->utc();
+        $slotCount = max(1, min(12, $slotCount));
 
         try {
-            return $this->db->transaction(function () use ($user, $court, $startsAtUtc): Booking {
+            return $this->db->transaction(function () use ($user, $court, $startsAtUtc, $slotCount, $guest): Booking {
                 /** @var Court|null $lockedCourt */
                 $lockedCourt = Court::query()
                     ->whereKey($court->id)
@@ -157,15 +176,25 @@ class BookingService
                 }
 
                 $slotMinutes = $lockedCourt->slot_minutes ?: 60;
-                $endsAtUtc = $startsAtUtc->copy()->addMinutes($slotMinutes);
+                $totalMinutes = $slotMinutes * $slotCount;
+                $endsAtUtc = $startsAtUtc->copy()->addMinutes($totalMinutes);
 
-                $this->assertSlotIsAvailable($lockedCourt, $startsAtUtc, $endsAtUtc);
+                // Validate every slot in the requested span — not just the first.
+                for ($i = 0; $i < $slotCount; $i++) {
+                    $slotStart = $startsAtUtc->copy()->addMinutes($slotMinutes * $i);
+                    $slotEnd = $slotStart->copy()->addMinutes($slotMinutes);
 
-                $total = (float) $lockedCourt->hourly_rate * ($slotMinutes / 60);
+                    $this->assertSlotIsAvailable($lockedCourt, $slotStart, $slotEnd);
+                }
+
+                $total = (float) $lockedCourt->hourly_rate * ($totalMinutes / 60);
 
                 return Booking::query()->create([
                     'court_id' => $lockedCourt->id,
-                    'user_id' => $user->id,
+                    'user_id' => $user?->id,
+                    'guest_name' => $guest['name'] ?? null,
+                    'guest_email' => $guest['email'] ?? null,
+                    'guest_phone' => $guest['phone'] ?? null,
                     'starts_at' => $startsAtUtc,
                     'ends_at' => $endsAtUtc,
                     'total_amount' => round($total, 2),

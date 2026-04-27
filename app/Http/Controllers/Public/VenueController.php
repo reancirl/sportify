@@ -97,7 +97,8 @@ class VenueController extends Controller
             ->withCount('players')
             ->get();
 
-        [$selectedDate, $dateOptions] = $this->resolveScheduleDate($request, $venue);
+        [$selectedDate, $dateOptions, $earliestDate, $latestDate] =
+            $this->resolveScheduleDate($request, $venue);
         $schedule = $this->buildSchedule($venue, $selectedDate);
 
         return Inertia::render('public/venue-show', [
@@ -106,20 +107,30 @@ class VenueController extends Controller
             'schedule' => $schedule,
             'selectedDate' => $selectedDate->toDateString(),
             'dateOptions' => $dateOptions,
+            'earliestDate' => $earliestDate->toDateString(),
+            'latestDate' => $latestDate->toDateString(),
         ]);
     }
 
     /**
      * Resolve the selected date (in venue timezone) plus the next-7-days
-     * picker options.
+     * quick-picker options. The selectable range goes from today out to the
+     * venue's advance booking window (defaults to 4 weeks).
      *
-     * @return array{0: CarbonImmutable, 1: list<array{date: string, day_label: string, weekday: string}>}
+     * @return array{
+     *     0: CarbonImmutable,
+     *     1: list<array{date: string, day_label: string, weekday: string}>,
+     *     2: CarbonImmutable,
+     *     3: CarbonImmutable,
+     * }
      */
     private function resolveScheduleDate(Request $request, Venue $venue): array
     {
         $tz = $venue->timezone ?: 'Asia/Manila';
         $today = CarbonImmutable::now($tz)->startOfDay();
-        $latest = $today->addDays(self::SCHEDULE_DAYS_AHEAD - 1);
+
+        $bookingWeeks = max(1, (int) ($venue->advance_booking_weeks ?: 4));
+        $latest = $today->addWeeks($bookingWeeks)->subDay();
 
         $requested = $request->string('date')->toString();
         $selected = $today;
@@ -132,7 +143,7 @@ class VenueController extends Controller
                     $selected = $candidate;
                 }
             } catch (\Throwable) {
-                // ignore — fall back to today
+                // Ignore unparseable input — fall back to today.
             }
         }
 
@@ -140,6 +151,11 @@ class VenueController extends Controller
 
         for ($i = 0; $i < self::SCHEDULE_DAYS_AHEAD; $i++) {
             $day = $today->addDays($i);
+
+            if ($day->greaterThan($latest)) {
+                break;
+            }
+
             $options[] = [
                 'date' => $day->toDateString(),
                 'day_label' => $i === 0
@@ -149,7 +165,7 @@ class VenueController extends Controller
             ];
         }
 
-        return [$selected, $options];
+        return [$selected, $options, $today, $latest];
     }
 
     /**

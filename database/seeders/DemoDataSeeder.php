@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\BookingStatus;
+use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
 use App\Enums\SessionPlayerStatus;
 use App\Enums\SessionStatus;
@@ -18,9 +19,11 @@ use App\Models\User;
 use App\Models\Venue;
 use App\Models\VenueImage;
 use App\Models\VenueOperatingHour;
+use App\Models\VenuePaymentMethod;
 use App\Models\VenueStaffMember;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -44,6 +47,7 @@ class DemoDataSeeder extends Seeder
             $owner = $owners[$i % $owners->count()];
 
             $venue = $this->createApprovedVenue($blueprint, $owner, $superAdmin);
+            $this->seedPaymentMethods($venue, $owner, $i);
             $this->seedOperatingHours($venue, $blueprint);
             $courts = $this->seedCourts($venue, $blueprint);
             $staff = $this->seedStaff($venue, $blueprint, $i);
@@ -129,9 +133,9 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
-    private function createOwners(): \Illuminate\Support\Collection
+    private function createOwners(): Collection
     {
         $owners = collect();
 
@@ -157,9 +161,9 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
-    private function createPlayers(): \Illuminate\Support\Collection
+    private function createPlayers(): Collection
     {
         $players = collect();
         $skillLevels = [
@@ -327,6 +331,34 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
+     * Seed GCash (always) plus Maya (for even-indexed venues) payment methods.
+     */
+    private function seedPaymentMethods(Venue $venue, User $owner, int $index): void
+    {
+        // Every approved venue gets a GCash entry using the owner's contact details.
+        VenuePaymentMethod::create([
+            'venue_id' => $venue->id,
+            'provider' => PaymentProvider::Gcash,
+            'account_name' => $owner->name,
+            'mobile_number' => $owner->phone ?? '09000000000',
+            'is_active' => true,
+            'sort_order' => 0,
+        ]);
+
+        // Every other venue also gets a Maya entry for variety.
+        if ($index % 2 === 0) {
+            VenuePaymentMethod::create([
+                'venue_id' => $venue->id,
+                'provider' => PaymentProvider::Maya,
+                'account_name' => $owner->name,
+                'mobile_number' => $owner->phone ?? '09000000000',
+                'is_active' => true,
+                'sort_order' => 1,
+            ]);
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $bp
      */
     private function seedOperatingHours(Venue $venue, array $bp): void
@@ -348,9 +380,9 @@ class DemoDataSeeder extends Seeder
 
     /**
      * @param  array<string, mixed>  $bp
-     * @return \Illuminate\Support\Collection<int, Court>
+     * @return Collection<int, Court>
      */
-    private function seedCourts(Venue $venue, array $bp): \Illuminate\Support\Collection
+    private function seedCourts(Venue $venue, array $bp): Collection
     {
         $courts = collect();
 
@@ -391,15 +423,15 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Court>  $courts
-     * @param  \Illuminate\Support\Collection<int, User>  $players
+     * @param  Collection<int, Court>  $courts
+     * @param  Collection<int, User>  $players
      * @param  array<string, mixed>  $bp
      */
     private function seedOpenPlaySession(
         Venue $venue,
         User $owner,
-        \Illuminate\Support\Collection $courts,
-        \Illuminate\Support\Collection $players,
+        Collection $courts,
+        Collection $players,
         array $bp,
     ): void {
         $session = OpenPlaySession::factory()->scheduled()->create([
@@ -429,12 +461,12 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Court>  $courts
-     * @param  \Illuminate\Support\Collection<int, User>  $players
+     * @param  Collection<int, Court>  $courts
+     * @param  Collection<int, User>  $players
      */
     private function seedSampleBookings(
-        \Illuminate\Support\Collection $courts,
-        \Illuminate\Support\Collection $players,
+        Collection $courts,
+        Collection $players,
         User $staff,
     ): void {
         if ($courts->count() < 2 || $players->count() < 4) {

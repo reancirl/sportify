@@ -339,6 +339,20 @@ export function VenueForm({
                     </Field>
                 </div>
 
+                <div className="rounded-md border border-dashed border-[#3e2817]/20 bg-[#faf5ec]/40 p-4">
+                    <p className="font-display text-sm font-bold tracking-[-0.01em] text-[#3e2817]">
+                        Payment methods
+                    </p>
+                    <p className="mt-1 font-serif text-xs text-[#5c3a21]">
+                        Configure GCash, Maya, and other receiving accounts
+                        from the dedicated{' '}
+                        <span className="font-medium text-[#3e2817]">
+                            Payment setup
+                        </span>{' '}
+                        tab — accounts there appear on the public checkout.
+                    </p>
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2">
                     {(
                         [
